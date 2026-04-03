@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Hearth — Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:'Nunito',sans-serif;}
+body{background:#E8E6F0;display:flex;flex-direction:column;align-items:center;padding:32px 16px 64px;}
+
+/* PAGE HEADER */
+.page-title{font-family:'Nunito',sans-serif;font-size:22px;font-weight:900;color:#2C2440;margin-bottom:3px;text-align:center;letter-spacing:-.5px;}
+.page-sub{font-size:11px;font-weight:700;color:#9090A8;margin-bottom:28px;text-align:center;}
+
+/* PHONE SHELL */
+.phone{
+  width:290px;height:580px;border-radius:36px;
+  position:relative;overflow:hidden;flex-shrink:0;
+  box-shadow:0 0 0 3px rgba(0,0,0,.12),0 0 0 5px rgba(255,255,255,.6),0 24px 64px rgba(0,0,0,.2);
+}
+.notch{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:72px;height:18px;background:rgba(0,0,0,.18);
+  border-radius:0 0 12px 12px;z-index:999;pointer-events:none;
+}
+
+/* SKY BACKGROUNDS */
+.sky-dawn{background:#F9C5D1;}
+.sky-day{background:#A8D8EA;}
+.sky-sunset{background:#FFD59E;}
+.sky-dusk{background:#C3B1E1;}
+
+/* SCREEN TRANSITIONS */
+.screen{
+  position:absolute;inset:0;overflow:hidden;
+  transform:translateX(100%);
+  transition:transform .3s cubic-bezier(.4,0,.2,1);
+  pointer-events:none;display:flex;flex-direction:column;
+}
+.screen.active{transform:translateX(0);pointer-events:auto;}
+
+/* STATUS BAR */
+.sbar{height:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.pill-notch{width:32px;height:6px;border-radius:3px;background:rgba(0,0,0,.13);}
+
+/* CONTENT AREA */
+.content{flex:1;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;}
+.content::-webkit-scrollbar{display:none;}
+
+/* BOTTOM NAV */
+.bnav{height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:space-around;background:rgba(255,255,255,.92);border-top:1px solid rgba(255,255,255,.8);}
+.ni{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:16px;line-height:1;cursor:pointer;}
+.nd{width:5px;height:5px;border-radius:50%;}
+
+/* SHARED COMPONENTS */
+.panel{background:#FFFFFF;border-radius:20px;padding:10px 11px;margin:0 7px;}
+.t-sub{font-size:9px;font-weight:700;color:#7878A0;}
+.btn-main{border-radius:28px;font-size:10px;font-weight:900;padding:9px 14px;text-align:center;color:white;letter-spacing:.01em;cursor:pointer;border:none;font-family:'Nunito',sans-serif;display:block;width:100%;transition:.15s;}
+.btn-main:active{opacity:.8;transform:scale(.98);}
+.btn-ghost{border-radius:28px;font-size:9px;font-weight:800;padding:7px 12px;text-align:center;background:rgba(255,255,255,.65);color:#6060A0;cursor:pointer;border:none;font-family:'Nunito',sans-serif;display:block;width:100%;transition:.15s;}
+.btn-ghost:active{opacity:.8;}
+.xpw{height:6px;border-radius:3px;background:rgba(255,255,255,.4);overflow:hidden;width:100%;}
+.xpf{height:6px;border-radius:3px;transition:width .4s;}
+.ptag{border-radius:20px;font-size:8px;font-weight:800;padding:2px 8px;display:inline-block;}
+.chk{width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;color:white;flex-shrink:0;}
+.unchk{width:17px;height:17px;border-radius:50%;border:2px solid rgba(255,255,255,.6);flex-shrink:0;background:rgba(255,255,255,.25);}
+.bub{background:rgba(255,255,255,.88);border-radius:16px;padding:7px 10px;}
+.cloud{position:absolute;border-radius:50px;background:rgba(255,255,255,.55);}
+.hrdiv{height:1px;background:rgba(0,0,0,.07);width:100%;margin:3px 0;}
+
+/* PIP SVG shared */
+.pip-lg{width:80px;height:80px;}
+.pip-md{width:64px;height:64px;}
+.pip-sm{width:52px;height:52px;}
+
+/* ANNOTATION */
+.ann{margin-top:18px;text-align:center;max-width:290px;}
+.ann-name{font-size:11px;font-weight:800;color:#5040A0;margin-bottom:3px;}
+.ann-note{font-size:10px;font-weight:600;color:#9090A8;line-height:1.5;margin-bottom:5px;}
+.badge{display:inline-block;font-size:10px;padding:2px 9px;border-radius:20px;font-weight:800;}
+.b1{background:#FFE4EE;color:#D4457A;}
+.b2{background:#FFF3DC;color:#C07000;}
+.b3{background:#DCF5E8;color:#1E7A48;}
+.b4{background:#EEE4FF;color:#6B3FA0;}
+.b5{background:#DCF0FF;color:#1A5FA0;}
+
+/* option row interactive */
+.opt-row{border-radius:14px;padding:7px 10px;cursor:pointer;transition:.15s;border:2.5px solid transparent;font-family:'Nunito',sans-serif;}
+.opt-row:active{opacity:.8;}
+.opt-row.sel{border-color:currentColor;}
+</style>
+</head>
+<body>
+
+<div class="page-title">Hearth</div>
+<div class="page-sub">Clickable prototype · 15 screens · tap to navigate</div>
+
+<div class="phone">
+  <div class="notch"></div>
+
+  <!-- ══════════════ S1: SPLASH ══════════════ -->
+  <div class="screen active sky-dawn" id="s1">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="align-items:center;justify-content:center;gap:10px;padding:16px;">
+      <div class="cloud" style="width:60px;height:18px;top:14px;left:10px;opacity:.7;"></div>
+      <div class="cloud" style="width:40px;height:13px;top:20px;right:16px;opacity:.5;"></div>
+      <svg class="pip-lg" viewBox="0 0 110 110">
+        <rect x="8" y="96" width="94" height="9" rx="4.5" fill="#A0783A"/>
+        <rect x="10" y="98" width="90" height="4.5" rx="2" fill="#C09050"/>
+        <ellipse cx="18" cy="82" rx="14" ry="6" fill="#E05030" stroke="#C03818" stroke-width="1.5" transform="rotate(-20 18 82)"/>
+        <ellipse cx="56" cy="78" rx="30" ry="24" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+        <ellipse cx="60" cy="85" rx="17" ry="13" fill="#F5C080"/>
+        <ellipse cx="48" cy="70" rx="20" ry="11" fill="#C05020" stroke="#903010" stroke-width="1.5" transform="rotate(-10 48 70)"/>
+        <ellipse cx="52" cy="66" rx="14" ry="7" fill="#D06030" transform="rotate(-10 52 66)"/>
+        <circle cx="78" cy="52" r="22" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+        <ellipse cx="83" cy="59" rx="12" ry="9" fill="#D94020"/>
+        <circle cx="87" cy="47" r="6" fill="#1A1428"/>
+        <circle cx="89" cy="45" r="2.4" fill="white"/>
+        <circle cx="87" cy="47" r="7.5" fill="none" stroke="#F0C080" stroke-width="1.5"/>
+        <path d="M97 55 L109 53 L97 60 Z" fill="#E8A820"/>
+        <line x1="48" y1="99" x2="41" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="48" y1="99" x2="48" y2="108" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="48" y1="99" x2="55" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="62" y1="99" x2="55" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="62" y1="99" x2="62" y2="108" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="62" y1="99" x2="69" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div style="font-size:24px;font-weight:900;color:white;letter-spacing:-.5px;text-shadow:0 1px 8px rgba(200,80,100,.4);">Hearth</div>
+      <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.85);text-align:center;line-height:1.7;">cook daily · feed your pet<br>explore the world</div>
+      <button class="btn-main" style="background:#E8608A;padding:10px 32px;width:auto;" onclick="go(2)">get started</button>
+      <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,.6);cursor:pointer;" onclick="go(5)">log in</div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S2: PICK PET ══════════════ -->
+  <div class="screen sky-day" id="s2">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="padding:8px 0 0;">
+      <div class="cloud" style="width:50px;height:15px;top:6px;left:7px;opacity:.8;"></div>
+      <div class="cloud" style="width:34px;height:11px;top:10px;right:10px;opacity:.6;"></div>
+      <div style="padding:0 10px 8px;">
+        <div style="font-size:14px;font-weight:900;color:white;">choose your companion</div>
+        <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.8);">they grow as you cook</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:0 10px;flex:1;" id="pet-grid">
+        <!-- Pip SELECTED -->
+        <div style="background:rgba(255,255,255,.92);border-radius:18px;padding:9px;text-align:center;outline:3px solid #E8A820;cursor:pointer;" onclick="selectPet(this)">
+          <svg width="48" height="48" viewBox="0 0 110 110" style="display:block;margin:0 auto;">
+            <rect x="8" y="96" width="94" height="9" rx="4.5" fill="#A0783A"/>
+            <rect x="10" y="98" width="90" height="4.5" rx="2" fill="#C09050"/>
+            <ellipse cx="18" cy="82" rx="14" ry="6" fill="#E05030" stroke="#C03818" stroke-width="1.5" transform="rotate(-20 18 82)"/>
+            <ellipse cx="56" cy="78" rx="30" ry="24" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+            <ellipse cx="60" cy="85" rx="17" ry="13" fill="#F5C080"/>
+            <ellipse cx="48" cy="70" rx="20" ry="11" fill="#C05020" stroke="#903010" stroke-width="1.5" transform="rotate(-10 48 70)"/>
+            <circle cx="78" cy="52" r="22" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+            <ellipse cx="83" cy="59" rx="12" ry="9" fill="#D94020"/>
+            <circle cx="87" cy="47" r="6" fill="#1A1428"/>
+            <circle cx="89" cy="45" r="2.4" fill="white"/>
+            <path d="M97 55 L109 53 L97 60 Z" fill="#E8A820"/>
+            <line x1="48" y1="99" x2="41" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+            <line x1="62" y1="99" x2="69" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <div style="font-size:10px;font-weight:900;color:#C05000;margin-top:3px;">Pip</div>
+          <div style="font-size:8px;font-weight:700;color:#E07030;">robin</div>
+        </div>
+        <!-- Cat -->
+        <div style="background:rgba(255,255,255,.75);border-radius:18px;padding:9px;text-align:center;cursor:pointer;" onclick="selectPet(this)">
+          <svg width="48" height="48" viewBox="0 0 120 120" style="display:block;margin:0 auto;">
+            <polygon points="28,52 38,18 54,50" fill="#FFAAC8" stroke="#E06090" stroke-width="2.5" stroke-linejoin="round"/>
+            <polygon points="66,50 82,18 92,52" fill="#FFAAC8" stroke="#E06090" stroke-width="2.5" stroke-linejoin="round"/>
+            <circle cx="60" cy="72" r="36" fill="#FFD8EC" stroke="#E06090" stroke-width="2.5"/>
+            <ellipse cx="46" cy="64" rx="6" ry="7" fill="#2C2440"/>
+            <ellipse cx="74" cy="64" rx="6" ry="7" fill="#2C2440"/>
+            <circle cx="47.5" cy="61.5" r="2.4" fill="white"/><circle cx="75.5" cy="61.5" r="2.4" fill="white"/>
+            <path d="M54 76 L60 82 L66 76 Q60 72 54 76Z" fill="#E06090"/>
+          </svg>
+          <div style="font-size:10px;font-weight:900;color:#A03060;margin-top:3px;">Mochi</div>
+          <div style="font-size:8px;font-weight:700;color:#C04070;">cat</div>
+        </div>
+        <!-- Dog -->
+        <div style="background:rgba(255,255,255,.75);border-radius:18px;padding:9px;text-align:center;cursor:pointer;" onclick="selectPet(this)">
+          <svg width="48" height="48" viewBox="0 0 120 120" style="display:block;margin:0 auto;">
+            <ellipse cx="22" cy="64" rx="18" ry="28" fill="#D4903C" stroke="#A86820" stroke-width="2.5"/>
+            <ellipse cx="98" cy="64" rx="18" ry="28" fill="#D4903C" stroke="#A86820" stroke-width="2.5"/>
+            <circle cx="60" cy="54" r="34" fill="#E8B060" stroke="#A86820" stroke-width="2.5"/>
+            <ellipse cx="60" cy="70" rx="18" ry="14" fill="#C8903C" stroke="#A86820" stroke-width="2"/>
+            <circle cx="46" cy="48" r="6.5" fill="#2C2440"/><circle cx="74" cy="48" r="6.5" fill="#2C2440"/>
+            <circle cx="48" cy="46" r="2.6" fill="white"/><circle cx="76" cy="46" r="2.6" fill="white"/>
+            <ellipse cx="60" cy="66" rx="8" ry="5.5" fill="#2C2440"/>
+          </svg>
+          <div style="font-size:10px;font-weight:900;color:#7A4800;margin-top:3px;">Biscuit</div>
+          <div style="font-size:8px;font-weight:700;color:#A06020;">dog</div>
+        </div>
+        <!-- Bunny -->
+        <div style="background:rgba(255,255,255,.75);border-radius:18px;padding:9px;text-align:center;cursor:pointer;" onclick="selectPet(this)">
+          <svg width="48" height="48" viewBox="0 0 120 120" style="display:block;margin:0 auto;">
+            <ellipse cx="40" cy="24" rx="13" ry="26" fill="#D8F0C0" stroke="#70C060" stroke-width="2.5"/>
+            <ellipse cx="80" cy="24" rx="13" ry="26" fill="#D8F0C0" stroke="#70C060" stroke-width="2.5"/>
+            <ellipse cx="40" cy="24" rx="7" ry="20" fill="#B0E090"/>
+            <ellipse cx="80" cy="24" rx="7" ry="20" fill="#B0E090"/>
+            <circle cx="60" cy="72" r="34" fill="#F0FBE8" stroke="#70C060" stroke-width="2.5"/>
+            <circle cx="46" cy="66" r="6" fill="#2C2440"/><circle cx="74" cy="66" r="6" fill="#2C2440"/>
+            <circle cx="47.5" cy="64" r="2.4" fill="white"/><circle cx="75.5" cy="64" r="2.4" fill="white"/>
+            <ellipse cx="60" cy="78" rx="5" ry="3.5" fill="#FFB0C8"/>
+          </svg>
+          <div style="font-size:10px;font-weight:900;color:#2A7020;margin-top:3px;">Clover</div>
+          <div style="font-size:8px;font-weight:700;color:#48A038;">bunny</div>
+        </div>
+      </div>
+      <div style="padding:8px 10px 4px;">
+        <button class="btn-main" style="background:#E8608A;" onclick="go(3)">choose Pip! 🐦</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S3: QUICK SETUP ══════════════ -->
+  <div class="screen sky-dawn" id="s3">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="padding:8px 0 0;">
+      <div style="padding:0 10px 8px;">
+        <div style="font-size:14px;font-weight:900;color:white;">quick setup</div>
+        <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.8);">just 2 questions!</div>
+      </div>
+      <div class="panel" style="flex:1;margin:0 7px 7px;display:flex;flex-direction:column;gap:7px;">
+        <div class="t-sub">how often do you cook?</div>
+        <div id="cook-freq" style="display:flex;flex-direction:column;gap:4px;">
+          <div class="opt-row" style="background:#FFF3DC;color:#A06800;border-color:#E8A820;" onclick="soloOpt(this,'cook-freq')"><span style="font-size:9px;font-weight:800;">rarely — let's start tiny 🌱</span></div>
+          <div class="opt-row" style="background:#F8F8F8;color:#2C2440;" onclick="soloOpt(this,'cook-freq')"><span style="font-size:9px;font-weight:800;">a few times a week</span></div>
+          <div class="opt-row" style="background:#F8F8F8;color:#2C2440;" onclick="soloOpt(this,'cook-freq')"><span style="font-size:9px;font-weight:800;">most days</span></div>
+          <div class="opt-row" style="background:#F8F8F8;color:#2C2440;" onclick="soloOpt(this,'cook-freq')"><span style="font-size:9px;font-weight:800;">daily cooker ✨</span></div>
+        </div>
+        <div class="hrdiv"></div>
+        <div class="t-sub">any dietary needs?</div>
+        <div id="diet-opts" style="display:flex;flex-wrap:wrap;gap:5px;">
+          <div style="background:#FFF3DC;border-radius:20px;padding:4px 11px;font-size:9px;font-weight:800;color:#806000;cursor:pointer;" onclick="toggleChip(this)">no restrictions</div>
+          <div style="background:#DCF5E8;border-radius:20px;padding:4px 11px;font-size:9px;font-weight:800;color:#207040;cursor:pointer;" onclick="toggleChip(this)">vegetarian</div>
+          <div style="background:#F8F0FF;border-radius:20px;padding:4px 11px;font-size:9px;font-weight:800;color:#6030A0;cursor:pointer;" onclick="toggleChip(this)">vegan</div>
+          <div style="background:#DCF0FF;border-radius:20px;padding:4px 11px;font-size:9px;font-weight:800;color:#1A5FA0;cursor:pointer;" onclick="toggleChip(this)">gluten-free</div>
+        </div>
+        <button class="btn-main" style="background:#E8608A;margin-top:auto;" onclick="go(4)">meet Pip! 🐦</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S4: MEET PIP ══════════════ -->
+  <div class="screen sky-dawn" id="s4">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="align-items:center;padding:10px 12px;gap:8px;">
+      <div class="cloud" style="width:56px;height:17px;top:10px;left:8px;opacity:.7;"></div>
+      <div class="cloud" style="width:36px;height:12px;top:16px;right:10px;opacity:.5;"></div>
+      <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.85);margin-top:8px;">say hello to…</div>
+      <svg class="pip-lg" viewBox="0 0 110 110">
+        <rect x="8" y="96" width="94" height="9" rx="4.5" fill="#A0783A"/>
+        <rect x="10" y="98" width="90" height="4.5" rx="2" fill="#C09050"/>
+        <ellipse cx="18" cy="82" rx="14" ry="6" fill="#E05030" stroke="#C03818" stroke-width="1.5" transform="rotate(-20 18 82)"/>
+        <ellipse cx="56" cy="78" rx="30" ry="24" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+        <ellipse cx="60" cy="85" rx="17" ry="13" fill="#F5C080"/>
+        <ellipse cx="48" cy="70" rx="20" ry="11" fill="#C05020" stroke="#903010" stroke-width="1.5" transform="rotate(-10 48 70)"/>
+        <ellipse cx="52" cy="66" rx="14" ry="7" fill="#D06030" transform="rotate(-10 52 66)"/>
+        <circle cx="78" cy="52" r="22" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+        <ellipse cx="83" cy="59" rx="12" ry="9" fill="#D94020"/>
+        <circle cx="87" cy="47" r="6" fill="#1A1428"/>
+        <circle cx="89" cy="45" r="2.4" fill="white"/>
+        <circle cx="87" cy="47" r="7.5" fill="none" stroke="#F0C080" stroke-width="1.5"/>
+        <path d="M97 55 L109 53 L97 60 Z" fill="#E8A820"/>
+        <line x1="48" y1="99" x2="41" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="48" y1="99" x2="48" y2="108" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="48" y1="99" x2="55" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="62" y1="99" x2="55" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="62" y1="99" x2="62" y2="108" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="62" y1="99" x2="69" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div style="font-size:20px;font-weight:900;color:white;letter-spacing:-.5px;">Pip 🐦</div>
+      <div class="bub" style="width:100%;text-align:center;">
+        <div style="font-size:9px;font-weight:700;color:#5050A0;line-height:1.6;font-style:italic;">"I'm so excited! cook something and feed me — I'll help us explore the world together!"</div>
+      </div>
+      <div style="background:rgba(255,255,255,.75);border-radius:14px;padding:7px 12px;width:100%;">
+        <div style="font-size:8px;font-weight:800;color:#7878A0;margin-bottom:4px;">Pip grows when you cook</div>
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <div style="display:flex;align-items:center;gap:6px;"><div class="chk" style="background:#E8608A;">✓</div><div style="font-size:8px;font-weight:700;color:#2C2440;">hatchling · 0–5 meals</div><span style="font-size:7px;font-weight:900;color:#E8608A;margin-left:auto;">← now!</span></div>
+          <div style="display:flex;align-items:center;gap:6px;"><div class="unchk"></div><div style="font-size:8px;font-weight:600;color:#9090A8;">fledgling · 6–15 meals</div></div>
+          <div style="display:flex;align-items:center;gap:6px;"><div class="unchk"></div><div style="font-size:8px;font-weight:600;color:#9090A8;">explorer · 16–30 meals</div></div>
+        </div>
+      </div>
+      <button class="btn-main" style="background:#E8A820;width:100%;" onclick="go(5)">let's go! 🌟</button>
+    </div>
+  </div>
+
+  <!-- ══════════════ S5: HOME ══════════════ -->
+  <div class="screen sky-day" id="s5">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content sky-day" style="padding:0;">
+      <div class="cloud" style="width:56px;height:16px;top:5px;left:5px;opacity:.8;"></div>
+      <div class="cloud" style="width:38px;height:12px;top:9px;right:9px;opacity:.6;"></div>
+      <div style="display:flex;justify-content:center;margin:6px 0 3px;">
+        <svg width="64" height="64" viewBox="0 0 110 110">
+          <rect x="8" y="96" width="94" height="9" rx="4.5" fill="#A0783A"/>
+          <rect x="10" y="98" width="90" height="4.5" rx="2" fill="#C09050"/>
+          <ellipse cx="18" cy="82" rx="14" ry="6" fill="#E05030" stroke="#C03818" stroke-width="1.5" transform="rotate(-20 18 82)"/>
+          <ellipse cx="56" cy="78" rx="30" ry="24" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+          <ellipse cx="60" cy="85" rx="17" ry="13" fill="#F5C080"/>
+          <ellipse cx="48" cy="70" rx="20" ry="11" fill="#C05020" stroke="#903010" stroke-width="1.5" transform="rotate(-10 48 70)"/>
+          <circle cx="78" cy="52" r="22" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+          <ellipse cx="83" cy="59" rx="12" ry="9" fill="#D94020"/>
+          <circle cx="87" cy="47" r="6" fill="#1A1428"/>
+          <circle cx="89" cy="45" r="2.4" fill="white"/>
+          <circle cx="87" cy="47" r="7.5" fill="none" stroke="#F0C080" stroke-width="1.5"/>
+          <path d="M97 55 L109 53 L97 60 Z" fill="#E8A820"/>
+          <line x1="48" y1="99" x2="41" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+          <line x1="62" y1="99" x2="69" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div style="padding:0 12px 4px;">
+        <div class="xpw"><div class="xpf" style="width:35%;background:rgba(255,220,50,.9);"></div></div>
+        <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,.8);text-align:center;margin-top:2px;">1 meal · 2 more to Japan 🗾</div>
+      </div>
+      <div class="panel" style="flex:1;margin:0 7px 5px;display:flex;flex-direction:column;gap:5px;">
+        <div style="font-size:11px;font-weight:900;color:#2C2440;">today's task</div>
+        <div style="background:#FFF3DC;border-radius:16px;padding:9px 11px;border:2px solid #E8A820;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div style="font-size:10px;font-weight:900;color:#906000;">"use something green"</div>
+            <span style="background:#FFF3DC;color:#A07010;font-size:8px;font-weight:800;border-radius:8px;padding:2px 6px;border:1.5px solid #E8A820;">today</span>
+          </div>
+          <div style="font-size:8px;font-weight:600;color:#9090A8;margin-top:3px;line-height:1.4;">herbs, spinach, anything — Pip loves it</div>
+          <div style="display:flex;gap:4px;margin-top:5px;">
+            <span class="ptag" style="background:#FFF3DC;color:#806000;">10 min</span>
+            <span class="ptag" style="background:#DCFFE8;color:#207040;">easy</span>
+          </div>
+        </div>
+        <button class="btn-main" style="background:#E8A820;" onclick="go(7)">I did it — feed Pip! 🍽️</button>
+        <div style="font-size:8px;font-weight:700;color:#A0A0C0;text-align:center;cursor:pointer;" onclick="go(6)">or pick a different task</div>
+      </div>
+    </div>
+    <div class="bnav">
+      <div class="ni" onclick="go(5)">🏠<div class="nd" style="background:#E8A820;"></div></div>
+      <div class="ni" onclick="go(10)">🗺️<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni" onclick="go(15)">📖<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni" onclick="go(13)">⚙️<div class="nd" style="background:transparent;"></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S6: TASK SWAP ══════════════ -->
+  <div class="screen sky-sunset" id="s6">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="padding:8px 0 0;">
+      <div style="padding:0 10px 7px;">
+        <div style="font-size:14px;font-weight:900;color:white;">swap today's task</div>
+        <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.75);">whatever fits right now</div>
+      </div>
+      <div class="panel" style="flex:1;margin:0 7px 5px;display:flex;flex-direction:column;gap:4px;overflow:hidden;" id="task-list">
+        <div style="background:#FFF3DC;border-radius:14px;padding:8px 10px;border:2px solid #E8A820;cursor:pointer;" onclick="selectTask(this)">
+          <div style="font-size:9px;font-weight:900;color:#906000;">"use something green" ✓</div>
+          <div style="font-size:8px;font-weight:700;color:#E8A820;">selected</div>
+        </div>
+        <div style="background:#F8F8F8;border-radius:14px;padding:8px 10px;cursor:pointer;" onclick="selectTask(this)">
+          <div style="font-size:9px;font-weight:800;color:#2C2440;">"cook with a friend"</div>
+          <div style="font-size:8px;font-weight:600;color:#9090A8;margin-top:2px;">Pip loves company</div>
+          <span class="ptag" style="background:#FFE4EE;color:#C04070;margin-top:4px;display:inline-block;">social 💕</span>
+        </div>
+        <div style="background:#F8F8F8;border-radius:14px;padding:8px 10px;cursor:pointer;" onclick="selectTask(this)">
+          <div style="font-size:9px;font-weight:800;color:#2C2440;">"use a leftover"</div>
+          <div style="font-size:8px;font-weight:600;color:#9090A8;margin-top:2px;">earns a travel stamp 🌍</div>
+          <span class="ptag" style="background:#DCFFE8;color:#207040;margin-top:4px;display:inline-block;">no-waste</span>
+        </div>
+        <div style="background:#F8F8F8;border-radius:14px;padding:8px 10px;cursor:pointer;" onclick="selectTask(this)">
+          <div style="font-size:9px;font-weight:800;color:#2C2440;">"try a new spice"</div>
+          <div style="font-size:8px;font-weight:600;color:#9090A8;margin-top:2px;">Pip discovers something ✨</div>
+          <span class="ptag" style="background:#DCF0FF;color:#1A5FA0;margin-top:4px;display:inline-block;">discovery</span>
+        </div>
+        <button class="btn-ghost" style="margin-top:auto;" onclick="go(5)">make it easier today</button>
+      </div>
+    </div>
+    <div class="bnav">
+      <div class="ni" onclick="go(5)">🏠<div class="nd" style="background:#E8A820;"></div></div>
+      <div class="ni" onclick="go(10)">🗺️<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni" onclick="go(15)">📖<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni">⚙️<div class="nd" style="background:transparent;"></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S7: COOKING MODE ══════════════ -->
+  <div class="screen sky-sunset" id="s7">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="padding:8px 0 0;">
+      <div style="padding:0 10px 6px;"><div style="font-size:14px;font-weight:900;color:white;">cooking now</div></div>
+      <div style="margin:0 10px 5px;display:flex;align-items:center;gap:7px;">
+        <svg width="32" height="32" viewBox="55 30 55 50" style="flex-shrink:0;">
+          <circle cx="78" cy="52" r="22" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+          <ellipse cx="83" cy="59" rx="12" ry="9" fill="#D94020"/>
+          <circle cx="87" cy="47" r="6" fill="#1A1428"/>
+          <circle cx="89" cy="45" r="2.4" fill="white"/>
+          <circle cx="87" cy="47" r="7.5" fill="none" stroke="#F0C080" stroke-width="1.5"/>
+          <path d="M97 55 L109 53 L97 60 Z" fill="#E8A820"/>
+        </svg>
+        <div class="bub" style="flex:1;"><div style="font-size:8px;font-weight:700;color:#5050A0;line-height:1.4;font-style:italic;">"I can smell something good… almost ready?"</div></div>
+      </div>
+      <div class="panel" style="flex:1;margin:0 7px 5px;display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:10px;font-weight:900;color:#2C2440;">"use something green"</div>
+        <div style="display:flex;flex-direction:column;gap:6px;" id="cook-steps">
+          <div style="display:flex;align-items:center;gap:7px;cursor:pointer;" onclick="toggleStep(this)">
+            <div class="chk" style="background:#38C060;">✓</div>
+            <div style="font-size:9px;font-weight:600;color:#B0B0C8;text-decoration:line-through;">pick a green ingredient</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;cursor:pointer;" onclick="toggleStep(this)">
+            <div class="chk" style="background:#38C060;">✓</div>
+            <div style="font-size:9px;font-weight:600;color:#B0B0C8;text-decoration:line-through;">add it to your meal</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;cursor:pointer;" onclick="toggleStep(this)">
+            <div class="unchk"></div>
+            <div style="font-size:9px;font-weight:700;color:#2C2440;">finish cooking</div>
+          </div>
+        </div>
+        <div class="hrdiv"></div>
+        <button class="btn-ghost" style="background:#F0F0F8;">quick recipe idea 💡</button>
+        <button class="btn-main" style="background:#E8A820;margin-top:auto;" onclick="go(8)">done — feed Pip! 🎉</button>
+      </div>
+    </div>
+    <div class="bnav">
+      <div class="ni" onclick="go(5)">🏠<div class="nd" style="background:#E8A820;"></div></div>
+      <div class="ni" onclick="go(10)">🗺️<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni" onclick="go(15)">📖<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni">⚙️<div class="nd" style="background:transparent;"></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S8: REWARD ══════════════ -->
+  <div class="screen sky-day" id="s8">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="align-items:center;padding:8px 10px;gap:6px;">
+      <div class="cloud" style="width:50px;height:14px;top:5px;left:5px;opacity:.7;"></div>
+      <div class="cloud" style="width:34px;height:11px;top:9px;right:9px;opacity:.55;"></div>
+      <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.85);margin-top:6px;">Pip is SO happy!</div>
+      <svg class="pip-md" viewBox="0 0 110 110">
+        <rect x="8" y="96" width="94" height="9" rx="4.5" fill="#A0783A"/>
+        <rect x="10" y="98" width="90" height="4.5" rx="2" fill="#C09050"/>
+        <ellipse cx="18" cy="82" rx="14" ry="6" fill="#E05030" stroke="#C03818" stroke-width="1.5" transform="rotate(-20 18 82)"/>
+        <ellipse cx="56" cy="78" rx="30" ry="24" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+        <ellipse cx="60" cy="85" rx="17" ry="13" fill="#F5C080"/>
+        <ellipse cx="48" cy="70" rx="20" ry="11" fill="#C05020" stroke="#903010" stroke-width="1.5" transform="rotate(-10 48 70)"/>
+        <circle cx="78" cy="52" r="22" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+        <ellipse cx="83" cy="59" rx="12" ry="9" fill="#D94020"/>
+        <circle cx="87" cy="47" r="6" fill="#1A1428"/>
+        <circle cx="89" cy="45" r="2.4" fill="white"/>
+        <path d="M97 55 L109 53 L97 60 Z" fill="#E8A820"/>
+        <line x1="48" y1="99" x2="41" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="62" y1="99" x2="69" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div class="bub" style="width:100%;">
+        <div style="font-size:9px;font-weight:700;color:#4848A0;text-align:center;line-height:1.5;font-style:italic;">"you cooked something green! i feel so nourished!"</div>
+      </div>
+      <div style="width:100%;">
+        <div style="display:flex;justify-content:space-between;"><span style="font-size:8px;font-weight:800;color:rgba(255,255,255,.9);">+20 XP</span><span style="font-size:8px;font-weight:700;color:rgba(255,255,255,.65);">hatchling</span></div>
+        <div class="xpw" style="margin-top:2px;"><div class="xpf" style="width:55%;background:rgba(255,220,50,.9);"></div></div>
+      </div>
+      <div style="background:rgba(255,255,255,.82);border-radius:14px;padding:7px 11px;width:100%;">
+        <div style="font-size:8px;font-weight:800;color:#C07000;margin-bottom:2px;">Pip discovered 🥬</div>
+        <div style="font-size:9px;font-weight:700;color:#2C2440;">spinach — beloved in Italian kitchens</div>
+      </div>
+      <button class="btn-main" style="background:#E8608A;width:100%;" onclick="go(9)">continue ›</button>
+    </div>
+  </div>
+
+  <!-- ══════════════ S9: TRAVEL NUDGE ══════════════ -->
+  <div class="screen sky-sunset" id="s9">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="align-items:center;padding:14px 10px;gap:8px;justify-content:center;">
+      <div style="font-size:36px;">🌍</div>
+      <div style="font-size:16px;font-weight:900;color:white;text-align:center;">Pip's ready to travel!</div>
+      <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.85);text-align:center;line-height:1.7;">3 meals cooked!<br>Pip earned a travel stamp ✈️</div>
+      <div style="background:rgba(255,255,255,.85);border-radius:18px;padding:10px 12px;width:100%;display:flex;align-items:center;gap:10px;">
+        <div style="font-size:26px;flex-shrink:0;">🇯🇵</div>
+        <div>
+          <div style="font-size:10px;font-weight:900;color:#2C2440;">next stop: Japan</div>
+          <div style="font-size:8px;font-weight:600;color:#7070A0;margin-top:2px;line-height:1.4;">unlock the ichiju sansai secret</div>
+        </div>
+      </div>
+      <button class="btn-main" style="background:#38C060;width:100%;" onclick="go(10)">view world map 🗺️</button>
+      <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,.6);cursor:pointer;" onclick="go(5)">not yet — remind me later</div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S10: WORLD MAP ══════════════ -->
+  <div class="screen sky-day" id="s10">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="padding:8px 0 0;">
+      <div class="cloud" style="width:50px;height:14px;top:5px;left:5px;opacity:.8;"></div>
+      <div class="cloud" style="width:32px;height:11px;top:9px;right:9px;opacity:.6;"></div>
+      <div style="padding:0 10px 6px;">
+        <div style="font-size:14px;font-weight:900;color:white;">Pip's world map</div>
+        <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,.75);">3 destinations · 12 food facts</div>
+      </div>
+      <!-- mini map -->
+      <div style="margin:0 7px 6px;background:rgba(140,200,240,.55);border-radius:16px;height:88px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:12px;left:7px;width:46px;height:28px;background:rgba(120,200,100,.7);border-radius:50% 40% 60% 50%;"></div>
+        <div style="position:absolute;top:15px;left:48px;width:34px;height:22px;background:rgba(120,200,100,.65);border-radius:50%;"></div>
+        <div style="position:absolute;top:7px;right:14px;width:32px;height:36px;background:rgba(120,200,100,.7);border-radius:50% 40%;"></div>
+        <div style="position:absolute;bottom:7px;left:18px;width:40px;height:20px;background:rgba(200,210,120,.65);border-radius:40%;"></div>
+        <div style="position:absolute;bottom:11px;right:18px;width:34px;height:22px;background:rgba(200,210,120,.65);border-radius:40%;"></div>
+        <!-- pins -->
+        <div style="position:absolute;top:10px;right:22px;font-size:14px;cursor:pointer;" onclick="go(11)">🇯🇵</div>
+        <div style="position:absolute;top:18px;left:54px;font-size:14px;cursor:pointer;" onclick="go(11)">🇮🇹</div>
+        <div style="position:absolute;top:12px;left:30px;font-size:14px;opacity:.5;">🇫🇷</div>
+        <div style="position:absolute;bottom:8px;right:28px;font-size:12px;opacity:.35;">🔒</div>
+        <div style="position:absolute;bottom:12px;left:22px;font-size:12px;opacity:.35;">🔒</div>
+      </div>
+      <div class="panel" style="flex:1;margin:0 7px 5px;display:flex;flex-direction:column;gap:5px;overflow:hidden;">
+        <div style="font-size:9px;font-weight:800;color:#7878A0;">tap a country to explore · unlock more by cooking</div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="display:flex;align-items:center;gap:7px;background:#FFFBE6;border-radius:12px;padding:7px 9px;cursor:pointer;" onclick="go(11)">
+            <span style="font-size:16px;">🇯🇵</span>
+            <div style="flex:1;"><div style="font-size:9px;font-weight:900;color:#5C4400;">Japan</div><div style="font-size:8px;font-weight:600;color:#9090A8;">4 facts unlocked</div></div>
+            <span style="font-size:9px;font-weight:800;color:#E8A820;">›</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;background:#EEE4FF;border-radius:12px;padding:7px 9px;cursor:pointer;" onclick="go(11)">
+            <span style="font-size:16px;">🇮🇹</span>
+            <div style="flex:1;"><div style="font-size:9px;font-weight:900;color:#402070;">Italy</div><div style="font-size:8px;font-weight:600;color:#9090A8;">5 facts unlocked</div></div>
+            <span style="font-size:9px;font-weight:800;color:#8040C0;">›</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;background:#F4F4F8;border-radius:12px;padding:7px 9px;opacity:.5;cursor:default;">
+            <span style="font-size:16px;">🇲🇽</span>
+            <div style="flex:1;"><div style="font-size:9px;font-weight:900;color:#9090A8;">Mexico</div><div style="font-size:8px;font-weight:600;color:#B0B0C8;">cook 5 more to unlock</div></div>
+            <span style="font-size:12px;">🔒</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="bnav">
+      <div class="ni" onclick="go(5)">🏠<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni" onclick="go(10)">🗺️<div class="nd" style="background:#38C060;"></div></div>
+      <div class="ni" onclick="go(15)">📖<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni">⚙️<div class="nd" style="background:transparent;"></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S11: FOOD FACT ══════════════ -->
+  <div class="screen sky-day" id="s11">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="padding:8px 0 0;">
+      <div style="padding:0 10px 6px;display:flex;align-items:center;gap:7px;">
+        <span style="font-size:22px;">🇯🇵</span>
+        <div>
+          <div style="font-size:13px;font-weight:900;color:white;">Japan · food fact</div>
+          <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,.7);">just unlocked ✨</div>
+        </div>
+      </div>
+      <div class="panel" style="flex:1;margin:0 7px 5px;display:flex;flex-direction:column;gap:6px;">
+        <div style="background:#FFFBE6;border-radius:16px;padding:10px;border:2px solid #E8D020;">
+          <div style="font-size:13px;font-weight:900;color:#5C4400;margin-bottom:4px;">Ichiju Sansai</div>
+          <div style="font-size:9px;font-weight:600;color:#5C4400;line-height:1.6;">"one soup, three sides." protein, veg, and grain — balanced by habit, not by effort.</div>
+          <div style="font-size:8px;font-weight:700;color:#806010;margin-top:5px;font-style:italic;">"balance is built in, not forced."</div>
+        </div>
+        <div style="font-size:10px;font-weight:800;color:#2C2440;">try it at home 🍱</div>
+        <div style="background:#DCF5E8;border-radius:14px;padding:9px;"><div style="font-size:9px;font-weight:600;color:#207040;line-height:1.5;">miso soup + rice + one veggie side. Pip earns a discovery point!</div></div>
+        <div style="display:flex;gap:6px;margin-top:auto;">
+          <button class="btn-ghost" style="flex:1;" onclick="go(15)">save 📖</button>
+          <button class="btn-main" style="flex:1;background:#38C060;" onclick="go(5)">try today</button>
+        </div>
+      </div>
+    </div>
+    <div class="bnav">
+      <div class="ni" onclick="go(5)">🏠<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni" onclick="go(10)">🗺️<div class="nd" style="background:#38C060;"></div></div>
+      <div class="ni" onclick="go(15)">📖<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni">⚙️<div class="nd" style="background:transparent;"></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S12: PIP NAPPING ══════════════ -->
+  <div class="screen sky-dusk" id="s12">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="align-items:center;padding:10px 10px;gap:7px;justify-content:center;">
+      <div class="cloud" style="width:56px;height:17px;top:7px;left:5px;opacity:.5;"></div>
+      <div class="cloud" style="width:38px;height:12px;top:11px;right:7px;opacity:.4;"></div>
+      <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.8);">psst — Pip misses you 💜</div>
+      <svg class="pip-md" viewBox="0 0 110 110">
+        <rect x="8" y="96" width="94" height="9" rx="4.5" fill="#A0783A"/>
+        <rect x="10" y="98" width="90" height="4.5" rx="2" fill="#C09050"/>
+        <ellipse cx="18" cy="82" rx="14" ry="6" fill="#E05030" stroke="#C03818" stroke-width="1.5" transform="rotate(-20 18 82)"/>
+        <ellipse cx="56" cy="78" rx="30" ry="24" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+        <ellipse cx="60" cy="85" rx="17" ry="13" fill="#F5C080"/>
+        <ellipse cx="48" cy="70" rx="20" ry="11" fill="#C05020" stroke="#903010" stroke-width="1.5" transform="rotate(-10 48 70)"/>
+        <circle cx="78" cy="52" r="22" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+        <ellipse cx="83" cy="59" rx="12" ry="9" fill="#D94020"/>
+        <circle cx="87" cy="47" r="6" fill="#1A1428"/>
+        <circle cx="89" cy="45" r="2.4" fill="white"/>
+        <path d="M97 55 L109 53 L97 60 Z" fill="#E8A820"/>
+        <line x1="48" y1="99" x2="41" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="62" y1="99" x2="69" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div style="font-size:18px;font-weight:900;color:rgba(160,120,220,.9);letter-spacing:5px;margin-top:-6px;">z z z</div>
+      <div style="font-size:15px;font-weight:900;color:white;">Pip is napping</div>
+      <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.8);text-align:center;line-height:1.7;">no stress, no guilt.<br>Pip just waits for you 💜</div>
+      <div style="background:rgba(255,255,255,.82);border-radius:16px;padding:7px 14px;width:100%;">
+        <div style="font-size:9px;font-weight:800;color:#7050A0;text-align:center;">no streaks · no punishment · ever</div>
+      </div>
+      <button class="btn-main" style="background:#8040C0;width:100%;" onclick="go(13)">wake Pip with a tiny task</button>
+      <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,.55);cursor:pointer;" onclick="go(5)">remind me tonight instead</div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S13: ENERGY CHECK ══════════════ -->
+  <div class="screen sky-dusk" id="s13">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="padding:8px 0 0;">
+      <div style="padding:0 10px 7px;">
+        <div style="font-size:14px;font-weight:900;color:white;">how are you feeling?</div>
+        <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.75);">Pip will match your energy</div>
+      </div>
+      <div class="panel" style="flex:1;margin:0 7px 5px;display:flex;flex-direction:column;gap:5px;" id="energy-opts">
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <div style="background:#DCF5E8;border-radius:14px;padding:7px 11px;cursor:pointer;" onclick="soloOpt(this,'energy-opts')"><span style="font-size:9px;font-weight:800;color:#207040;">full energy — real task please! 💪</span></div>
+          <div style="background:#EEE4FF;border-radius:14px;padding:7px 11px;border:2.5px solid #9060D0;cursor:pointer;" onclick="soloOpt(this,'energy-opts')"><span style="font-size:9px;font-weight:900;color:#6030A0;">tired — keep it simple ✓</span></div>
+          <div style="background:#FFF3DC;border-radius:14px;padding:7px 11px;cursor:pointer;" onclick="soloOpt(this,'energy-opts')"><span style="font-size:9px;font-weight:800;color:#906000;">exhausted — micro-task only 🌙</span></div>
+        </div>
+        <div class="hrdiv"></div>
+        <div style="font-size:10px;font-weight:900;color:#2C2440;">just right for you ✨</div>
+        <div style="background:#EEE4FF;border-radius:16px;padding:9px 11px;border:2px solid #9060D0;">
+          <div style="font-size:10px;font-weight:900;color:#6030A0;">"add one fresh ingredient"</div>
+          <div style="font-size:8px;font-weight:600;color:#9090A8;margin-top:3px;line-height:1.4;">even herbs on whatever you made</div>
+          <div style="display:flex;gap:4px;margin-top:4px;">
+            <span class="ptag" style="background:#DCF5E8;color:#207040;">2 min</span>
+            <span class="ptag" style="background:#EEE4FF;color:#6030A0;">micro-task</span>
+          </div>
+        </div>
+        <button class="btn-main" style="background:#8040C0;margin-top:auto;" onclick="go(7)">use this task</button>
+      </div>
+    </div>
+    <div class="bnav">
+      <div class="ni" onclick="go(5)">🏠<div class="nd" style="background:#8040C0;"></div></div>
+      <div class="ni" onclick="go(10)">🗺️<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni" onclick="go(15)">📖<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni">⚙️<div class="nd" style="background:transparent;"></div></div>
+    </div>
+  </div>
+
+  <!-- ══════════════ S14: PIP GROWTH ══════════════ -->
+  <div class="screen sky-day" id="s14">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="align-items:center;padding:8px 10px;gap:5px;">
+      <div class="cloud" style="width:52px;height:15px;top:5px;left:5px;opacity:.8;"></div>
+      <div class="cloud" style="width:34px;height:11px;top:9px;right:7px;opacity:.6;"></div>
+      <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,.85);margin-top:6px;">look how much Pip grew! 🌟</div>
+      <svg class="pip-md" viewBox="0 0 110 110">
+        <rect x="8" y="96" width="94" height="9" rx="4.5" fill="#A0783A"/>
+        <rect x="10" y="98" width="90" height="4.5" rx="2" fill="#C09050"/>
+        <ellipse cx="18" cy="82" rx="14" ry="6" fill="#E05030" stroke="#C03818" stroke-width="1.5" transform="rotate(-20 18 82)"/>
+        <ellipse cx="56" cy="78" rx="30" ry="24" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+        <ellipse cx="60" cy="85" rx="17" ry="13" fill="#F5C080"/>
+        <ellipse cx="48" cy="70" rx="20" ry="11" fill="#C05020" stroke="#903010" stroke-width="1.5" transform="rotate(-10 48 70)"/>
+        <circle cx="78" cy="52" r="22" fill="#E87030" stroke="#C05020" stroke-width="2"/>
+        <ellipse cx="83" cy="59" rx="12" ry="9" fill="#D94020"/>
+        <circle cx="87" cy="47" r="6" fill="#1A1428"/>
+        <circle cx="89" cy="45" r="2.4" fill="white"/>
+        <path d="M97 55 L109 53 L97 60 Z" fill="#E8A820"/>
+        <line x1="48" y1="99" x2="41" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+        <line x1="62" y1="99" x2="69" y2="107" stroke="#C09050" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <div style="font-size:16px;font-weight:900;color:white;">Pip grew up!</div>
+      <div style="background:rgba(255,255,255,.85);border-radius:14px;font-size:8px;font-weight:900;color:#2080D0;padding:4px 14px;">stage 2 — fledgling 🪽</div>
+      <div style="background:rgba(255,255,255,.82);border-radius:16px;padding:9px 11px;width:100%;">
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          <div style="display:flex;align-items:center;gap:6px;"><div class="chk" style="background:#38C060;font-size:10px;">✓</div><div style="font-size:9px;font-weight:700;color:#207040;">hatchling · 0–5 meals</div></div>
+          <div style="display:flex;align-items:center;gap:6px;"><div class="chk" style="background:#2080D0;font-size:10px;">✓</div><div style="font-size:9px;font-weight:700;color:#2080D0;">fledgling · 6–15 meals</div><span style="font-size:8px;font-weight:900;color:#2080D0;margin-left:auto;">← now!</span></div>
+          <div style="display:flex;align-items:center;gap:6px;"><div class="unchk"></div><div style="font-size:9px;font-weight:600;color:#9090A8;">explorer · 16–30 meals</div></div>
+          <div style="display:flex;align-items:center;gap:6px;"><div class="unchk"></div><div style="font-size:9px;font-weight:600;color:#9090A8;">gourmand · 31+ meals</div></div>
+        </div>
+      </div>
+      <button class="btn-main" style="background:#2080D0;width:100%;" onclick="go(5)">celebrate! 🎉</button>
+    </div>
+  </div>
+
+  <!-- ══════════════ S15: JOURNAL ══════════════ -->
+  <div class="screen sky-day" id="s15">
+    <div class="sbar"><div class="pill-notch"></div></div>
+    <div class="content" style="padding:8px 0 0;">
+      <div class="cloud" style="width:50px;height:14px;top:5px;left:5px;opacity:.8;"></div>
+      <div class="cloud" style="width:32px;height:11px;top:9px;right:9px;opacity:.6;"></div>
+      <div style="padding:0 10px 6px;">
+        <div style="font-size:14px;font-weight:900;color:white;">Pip's food journal</div>
+        <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,.75);">12 facts · 3 destinations 🌍</div>
+      </div>
+      <div class="panel" style="flex:1;margin:0 7px 5px;display:flex;flex-direction:column;gap:5px;">
+        <div style="background:#FFFBE6;border-radius:16px;padding:9px;border:2px solid #E8D020;cursor:pointer;" onclick="go(11)">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;"><span style="font-size:14px;">🇯🇵</span><span style="font-size:10px;font-weight:900;color:#5C4400;">Japan</span></div>
+          <div style="font-size:9px;font-weight:600;color:#5C4400;line-height:1.5;">ichiju sansai — one soup, three sides. balance by habit.</div>
+        </div>
+        <div style="background:#EEE4FF;border-radius:16px;padding:9px;border:2px solid #B090E0;cursor:pointer;" onclick="go(11)">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;"><span style="font-size:14px;">🇮🇹</span><span style="font-size:10px;font-weight:900;color:#402070;">Italy</span></div>
+          <div style="font-size:9px;font-weight:600;color:#402070;line-height:1.5;">cucina povera — humble, seasonal ingredients are the finest food.</div>
+        </div>
+        <div style="background:#DCF0FF;border-radius:16px;padding:9px;border:2px solid #90C0F0;cursor:pointer;" onclick="go(11)">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px;"><span style="font-size:14px;">🇫🇷</span><span style="font-size:10px;font-weight:900;color:#1A4A80;">France</span></div>
+          <div style="font-size:9px;font-weight:600;color:#1A4A80;line-height:1.5;">mise en place — everything in its place before cooking starts.</div>
+        </div>
+        <div style="background:#F4F4F8;border-radius:16px;padding:8px;border:2px dashed #C0C0D8;opacity:.65;">
+          <div style="font-size:8px;font-weight:700;color:#9090A8;text-align:center;">cook more to unlock Mexico, India, Thailand… 🌏</div>
+        </div>
+      </div>
+    </div>
+    <div class="bnav">
+      <div class="ni" onclick="go(5)">🏠<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni" onclick="go(10)">🗺️<div class="nd" style="background:transparent;"></div></div>
+      <div class="ni" onclick="go(15)">📖<div class="nd" style="background:#2080D0;"></div></div>
+      <div class="ni">⚙️<div class="nd" style="background:transparent;"></div></div>
+    </div>
+  </div>
+
+</div><!-- end phone -->
+
+<div class="ann">
+  <div class="ann-name" id="aname">S1 · Splash screen</div>
+  <div class="ann-note" id="anote">Warm dawn sky sets the tone. Pet mascot front and centre. Single CTA.</div>
+  <div id="abadge"><span class="badge b1">Phase 1 — First launch</span></div>
+</div>
+
+<script>
+var cur = 1;
+var hist = [];
+
+var ann = {
+  1:  {n:'S1 · Splash screen',      t:'Warm dawn sky sets the tone. Pet mascot front and centre. Single CTA.',                      b:'b1'},
+  2:  {n:'S2 · Pick a companion',    t:'4 pets with distinct personalities. Pip pre-selected. Tap any to choose.',                   b:'b1'},
+  3:  {n:'S3 · Quick setup',         t:'Just 2 questions. Frequency + dietary needs. No sign-up required.',                         b:'b1'},
+  4:  {n:'S4 · Meet Pip',            t:'Character introduction with growth stages visible. Sets expectations warmly.',               b:'b1'},
+  5:  {n:'S5 · Home screen',         t:'Pip + XP bar always visible. One task, one big CTA. Swap link reduces pressure.',           b:'b2'},
+  6:  {n:'S6 · Task swap',           t:'4 alternatives — one pre-selected. "Make it easier" escape hatch at bottom.',              b:'b2'},
+  7:  {n:'S7 · Cooking mode',        t:'Pip head + speech bubble creates companionship. Checklist with tappable steps.',           b:'b2'},
+  8:  {n:'S8 · Reward & reaction',   t:'Pip reacts with joy + XP gain. Food discovery surfaces. Immediate positive reinforcement.', b:'b2'},
+  9:  {n:'S9 · Travel nudge',        t:'Milestone moment — 3 meals unlocks a country. Big destination reveal.',                    b:'b3'},
+  10: {n:'S10 · World map',          t:'Tap a country flag for its food fact. Locked countries teased.',                           b:'b3'},
+  11: {n:'S11 · Food fact card',     t:'Cultural context delivered with personality. Try-at-home prompt bridges to action.',       b:'b3'},
+  12: {n:'S12 · Pip napping',        t:'"No streaks, no punishment, ever." Re-engagement without guilt.',                         b:'b4'},
+  13: {n:'S13 · Energy check',       t:'3-option energy selector auto-matches task difficulty. No shame for low energy.',          b:'b4'},
+  14: {n:'S14 · Pip growth moment',  t:'Stage-up celebration. Growth ladder shows progress and what is next.',                    b:'b5'},
+  15: {n:'S15 · Food facts journal', t:'Archive of unlocked food facts by country. Locked destinations tease future content.',    b:'b5'}
+};
+
+function go(n) {
+  if (n == cur) return;
+  hist.push(cur);
+  var from = document.getElementById('s' + cur);
+  var to = document.getElementById('s' + n);
+  from.style.transition = 'transform .3s cubic-bezier(.4,0,.2,1)';
+  from.style.transform = 'translateX(-100%)';
+  from.classList.remove('active');
+  from.style.pointerEvents = 'none';
+  to.style.transition = 'none';
+  to.style.transform = 'translateX(100%)';
+  to.style.pointerEvents = 'none';
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){
+    to.style.transition = 'transform .3s cubic-bezier(.4,0,.2,1)';
+    to.style.transform = 'translateX(0)';
+    to.classList.add('active');
+    to.style.pointerEvents = 'auto';
+    setTimeout(function(){
+      from.style.transform = '';
+      from.style.transition = '';
+    }, 320);
+  }); });
+  cur = n;
+  updateAnn(n);
+}
+
+function updateAnn(n) {
+  var d = ann[n]; if (!d) return;
+  document.getElementById('aname').textContent = d.n;
+  document.getElementById('anote').textContent = d.t;
+  var phase = {b1:'Phase 1 — Onboarding',b2:'Phase 2 — Daily loop',b3:'Phase 3 — Travel unlock',b4:'Phase 4 — Re-engagement',b5:'Phase 5 — Pet growth & journal'};
+  document.getElementById('abadge').innerHTML = '<span class="badge '+d.b+'">'+phase[d.b]+'</span>';
+}
+
+function selectPet(el) {
+  document.querySelectorAll('#pet-grid > div').forEach(function(d){ d.style.outline = 'none'; d.style.background = 'rgba(255,255,255,.75)'; });
+  el.style.outline = '3px solid #E8A820';
+  el.style.background = 'rgba(255,255,255,.92)';
+}
+
+function soloOpt(el, groupId) {
+  var parent = document.getElementById(groupId) || el.closest('[id]');
+  parent.querySelectorAll('[style*="border:2.5px solid"]').forEach(function(e){ e.style.border = 'none'; });
+  el.style.border = '2.5px solid currentColor';
+}
+
+function toggleChip(el) {
+  var on = el.style.opacity === '1' || el.style.opacity === '';
+  el.style.opacity = on ? '0.45' : '1';
+  el.style.outline = on ? 'none' : '2px solid currentColor';
+}
+
+function toggleStep(row) {
+  var dot = row.querySelector('.chk, .unchk');
+  var txt = row.querySelectorAll('div')[1];
+  if (dot.classList.contains('unchk')) {
+    dot.classList.remove('unchk');
+    dot.classList.add('chk');
+    dot.style.background = '#38C060';
+    dot.textContent = '✓';
+    txt.style.textDecoration = 'line-through';
+    txt.style.color = '#B0B0C8';
+  } else {
+    dot.classList.remove('chk');
+    dot.classList.add('unchk');
+    dot.style.background = '';
+    dot.textContent = '';
+    txt.style.textDecoration = 'none';
+    txt.style.color = '#2C2440';
+  }
+}
+
+function selectTask(el) {
+  document.querySelectorAll('#task-list > div').forEach(function(d){
+    d.style.background = '#F8F8F8';
+    d.style.border = 'none';
+    var label = d.querySelector('div:last-child');
+    if (label && label.textContent === 'selected') label.remove();
+  });
+  el.style.background = '#FFF3DC';
+  el.style.border = '2px solid #E8A820';
+  if (!el.querySelector('.sel-label')) {
+    var lbl = document.createElement('div');
+    lbl.className = 'sel-label';
+    lbl.style.cssText = 'font-size:8px;font-weight:700;color:#E8A820;margin-top:3px;';
+    lbl.textContent = 'selected';
+    el.appendChild(lbl);
+  }
+}
+
+updateAnn(1);
+</script>
+</body>
+</html>
