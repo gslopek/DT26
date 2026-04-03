@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Sunday Reset — Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:'DM Sans',sans-serif;}
+body{background:#E8E5DF;display:flex;flex-direction:column;align-items:center;padding:32px 16px 64px;}
+
+:root{
+  --sage:#7B9E7A;--sage-l:#D4E4D3;--sage-p:#F0F5EF;
+  --terra:#C4714A;--terra-l:#F0D5C6;--terra-p:#FAF0E8;
+  --gold:#C9973A;--gold-l:#F5E6C8;
+  --blush:#C97A8A;--blush-l:#F5DDE3;--blush-p:#FBF0F3;
+  --ink:#2C2A27;--mid:#6B6760;--hint:#9A968E;
+  --cream:#FAF7F2;--white:#FFFFFF;--surf:#F4F1EC;
+}
+
+.page-title{font-family:'DM Serif Display',serif;font-size:22px;color:var(--ink);margin-bottom:3px;text-align:center;font-weight:400;}
+.page-sub{font-size:11px;color:var(--hint);margin-bottom:28px;text-align:center;letter-spacing:0.04em;}
+
+.phone{
+  width:290px;height:600px;border-radius:38px;
+  border:2.5px solid #b8b4ae;position:relative;
+  overflow:hidden;background:var(--cream);flex-shrink:0;
+  box-shadow:0 0 0 7px #E8E5DF,0 24px 64px rgba(0,0,0,.18);
+}
+.notch{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:80px;height:22px;background:#b8b4ae;
+  border-radius:0 0 16px 16px;z-index:999;pointer-events:none;
+}
+.sbar{
+  position:absolute;top:0;left:0;right:0;
+  display:flex;justify-content:space-between;
+  padding:6px 16px 0;font-size:9px;font-weight:500;
+  color:var(--ink);z-index:90;pointer-events:none;
+}
+
+.screen{
+  position:absolute;inset:0;overflow:hidden;
+  transform:translateX(100%);
+  transition:transform .32s cubic-bezier(.4,0,.2,1);
+  pointer-events:none;
+}
+.screen.active{transform:translateX(0);pointer-events:auto;}
+
+.inner{
+  position:absolute;top:22px;left:0;right:0;bottom:0;
+  overflow-y:auto;scrollbar-width:none;
+}
+.inner::-webkit-scrollbar{display:none;}
+.ws{padding:14px 14px 20px;}
+
+/* bg tints */
+.bg-terra{background:var(--terra-p);}
+.bg-cream{background:var(--cream);}
+.bg-sage{background:var(--sage-p);}
+.bg-blush{background:var(--blush-p);}
+
+/* typography */
+.sh1{font-family:'DM Serif Display',serif;font-size:17px;line-height:1.25;color:var(--ink);margin-bottom:5px;}
+.sh1 em{color:var(--terra);font-style:italic;}
+.sbody{font-size:10px;color:var(--mid);line-height:1.5;margin-bottom:10px;}
+
+/* cards */
+.scard{background:var(--white);border-radius:12px;padding:10px 12px;margin-bottom:8px;border:1px solid rgba(0,0,0,0.07);}
+.sct{font-size:8px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:7px;}
+
+/* buttons */
+.sbtn{display:block;width:100%;background:var(--ink);color:var(--cream);border:none;border-radius:12px;padding:11px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;text-align:center;cursor:pointer;transition:.15s;margin-bottom:2px;}
+.sbtn:active{opacity:.8;transform:scale(.98);}
+.sbtn-o{display:block;width:100%;background:transparent;color:var(--ink);border:1.5px solid rgba(0,0,0,0.14);border-radius:12px;padding:10px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;text-align:center;cursor:pointer;margin-top:7px;transition:.15s;}
+.sbtn-o:active{background:rgba(0,0,0,0.04);}
+.shint{font-size:9px;color:var(--hint);text-align:center;margin-top:5px;}
+.npill{width:52px;height:4px;background:var(--ink);border-radius:4px;margin:10px auto 0;opacity:0.1;}
+
+/* chips */
+.crow{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;}
+.chip{padding:4px 9px;border-radius:20px;font-size:9px;font-weight:500;cursor:pointer;transition:.15s;border:1.5px solid transparent;font-family:'DM Sans',sans-serif;}
+.chip:active{opacity:.8;}
+.cs{background:var(--sage-l);color:#2A5A29;}
+.ct{background:var(--terra-l);color:#7A3A1E;}
+.cg{background:var(--gold-l);color:#7A5A1C;}
+.cb{background:var(--blush-l);color:#6B3545;}
+.cx{background:var(--white);color:var(--mid);border-color:rgba(0,0,0,.12);}
+.cx.on{background:var(--sage-l);color:#2A5A29;border-color:var(--sage);}
+
+/* progress bar */
+.pbar{height:4px;background:rgba(0,0,0,.08);border-radius:4px;margin-bottom:10px;}
+.pfill{height:100%;background:var(--sage);border-radius:4px;transition:width .4s;}
+
+/* back button */
+.back{
+  width:26px;height:26px;border-radius:50%;
+  background:var(--white);border:1px solid rgba(0,0,0,.10);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;cursor:pointer;flex-shrink:0;
+  font-family:'DM Sans',sans-serif;
+}
+
+/* energy row */
+.erow{display:flex;gap:4px;}
+.ec{flex:1;background:var(--surf);border-radius:9px;padding:7px 3px;text-align:center;font-size:9px;color:var(--mid);border:1.5px solid transparent;cursor:pointer;transition:.15s;font-family:'DM Sans',sans-serif;}
+.ec.a,.ec.on{background:var(--sage-l);border-color:var(--sage);color:var(--ink);font-weight:500;}
+.eico{font-size:13px;display:block;margin-bottom:2px;}
+
+/* week row */
+.wrow{display:flex;gap:3px;}
+.wdy{flex:1;text-align:center;font-size:8px;color:var(--hint);}
+.wdt{width:18px;height:18px;border-radius:50%;margin:0 auto 3px;font-size:8px;display:flex;align-items:center;justify-content:center;background:var(--surf);}
+.wdt.today{background:var(--terra);color:var(--white);font-weight:500;}
+.wdt.done{background:var(--sage-l);font-size:7px;color:#2A5A29;}
+
+/* ingredient grid */
+.igrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px;}
+.ic{background:var(--white);border:1.5px solid rgba(0,0,0,.08);border-radius:11px;padding:8px 4px;text-align:center;position:relative;cursor:pointer;transition:.15s;}
+.ic:active{opacity:.8;}
+.ic.sel{border-color:var(--sage);background:var(--sage-p);}
+.ic.sel::after{content:'✓';position:absolute;top:3px;right:5px;font-size:8px;color:var(--sage);font-weight:700;}
+.iico{font-size:17px;display:block;margin-bottom:3px;}
+.inm{font-size:9px;font-weight:500;color:var(--ink);}
+.int{font-size:8px;color:var(--hint);display:block;margin-top:1px;}
+
+/* progress dots */
+.cdots{display:flex;gap:4px;justify-content:center;margin-top:4px;}
+.cd{width:6px;height:6px;border-radius:50%;background:var(--sage-l);border:1px solid var(--sage);}
+.cd.f{background:var(--sage);}
+
+/* building list */
+.bitem{display:flex;align-items:center;gap:7px;margin-bottom:5px;}
+.bdot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.bdot.done{background:var(--sage);}
+.bdot.prog{background:var(--sage-l);border:1px solid var(--sage);}
+.bdot.wait{border:1px solid rgba(0,0,0,.15);}
+.btxt{font-size:10px;}
+.btxt.done{color:var(--ink);}
+.btxt.prog{color:var(--mid);}
+.btxt.wait{color:var(--hint);}
+
+/* meal cards */
+.mc{background:var(--white);border-radius:12px;overflow:hidden;margin-bottom:8px;border:1px solid rgba(0,0,0,.07);}
+.mbar{height:4px;}
+.mbody{padding:10px 12px;}
+.mmeta{display:flex;gap:4px;margin-bottom:5px;}
+.mtag{font-size:8px;padding:2px 6px;border-radius:20px;font-weight:500;}
+.mt-t{background:var(--gold-l);color:#7A5A1C;}
+.mt-m{background:var(--blush-l);color:#6B3545;}
+.mnm{font-family:'DM Serif Display',serif;font-size:13px;color:var(--ink);margin-bottom:3px;}
+.msen{font-size:9px;color:var(--mid);font-style:italic;line-height:1.4;margin-bottom:6px;}
+.bnote{background:var(--sage-p);border-radius:8px;padding:6px 8px;font-size:9px;color:var(--ink);line-height:1.4;display:flex;gap:4px;}
+.leaf{color:var(--sage);font-size:10px;flex-shrink:0;}
+.mfoot{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-top:1px solid rgba(0,0,0,.05);}
+.swp{font-size:9px;color:var(--hint);text-decoration:underline;cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;}
+.ckbtn{font-size:9px;background:var(--ink);color:var(--white);border:none;border-radius:8px;padding:4px 10px;font-family:'DM Sans',sans-serif;cursor:pointer;}
+.ckbtn:active{opacity:.8;}
+
+/* shopping list */
+.slcat{font-size:8px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;margin-top:9px;}
+.sli{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,.05);cursor:pointer;}
+.slck{width:13px;height:13px;border-radius:3px;border:1.5px solid rgba(0,0,0,.18);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:.15s;}
+.slck.done{background:var(--sage);border-color:var(--sage);}
+.slnm{font-size:10px;color:var(--ink);flex:1;}
+.slnm.done{text-decoration:line-through;color:var(--hint);}
+.slqt{font-size:9px;color:var(--hint);}
+
+/* mood options */
+.mopt{display:flex;flex-direction:column;gap:5px;margin-bottom:10px;}
+.mbtn{display:flex;align-items:center;gap:8px;background:var(--white);border:1.5px solid rgba(0,0,0,.09);border-radius:12px;padding:8px 10px;cursor:pointer;transition:.15s;font-family:'DM Sans',sans-serif;}
+.mbtn:active{background:var(--surf);}
+.mbtn.on{border-color:var(--sage);background:var(--sage-p);}
+.mico{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.mlbl{font-size:10px;font-weight:500;color:var(--ink);}
+.mdsc{font-size:9px;color:var(--mid);margin-top:1px;}
+
+/* suggestion card */
+.rcard{background:var(--white);border-radius:12px;padding:10px 12px;border:1px solid rgba(0,0,0,.07);}
+.rclbl{font-size:8px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;}
+.rcnm{font-family:'DM Serif Display',serif;font-size:14px;color:var(--ink);margin-bottom:3px;}
+.rcwhy{font-size:9px;color:var(--mid);line-height:1.45;}
+
+/* cook step */
+.tbar{background:var(--surf);border-radius:8px;padding:8px 10px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;}
+.tlbl{font-size:10px;color:var(--ink);}
+.tval{font-size:14px;font-weight:500;color:var(--terra);cursor:pointer;}
+
+/* badge */
+.sbadge{display:inline-flex;align-items:center;gap:4px;background:var(--white);border-radius:20px;padding:3px 9px;font-size:9px;font-weight:500;color:var(--mid);margin-bottom:10px;border:1px solid rgba(0,0,0,.08);}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--terra);flex-shrink:0;}
+
+/* rate row */
+.rate-row{display:flex;justify-content:center;gap:18px;}
+.rate-item{text-align:center;cursor:pointer;padding:6px 8px;border-radius:10px;transition:.15s;border:1.5px solid transparent;}
+.rate-item.on{background:var(--sage-p);border-color:var(--sage);}
+.rate-item:active{background:var(--surf);}
+.rate-ico{font-size:22px;display:block;margin-bottom:3px;}
+.rate-lbl{font-size:9px;color:var(--mid);}
+
+/* notification pref chips */
+.nchip{flex:1;text-align:center;}
+
+/* annotations */
+.ann{margin-top:18px;text-align:center;max-width:290px;}
+.ann-name{font-size:11px;font-weight:500;color:#5a4f42;margin-bottom:3px;}
+.ann-note{font-size:10px;color:#8a7d6e;line-height:1.5;margin-bottom:5px;}
+.badge{display:inline-block;font-size:10px;padding:2px 9px;border-radius:20px;font-weight:500;}
+.bt{background:var(--terra-l);color:#7A3A1E;}
+.bg{background:var(--sage-l);color:#2A5A29;}
+.bgold{background:var(--gold-l);color:#7A5A1C;}
+.bblush{background:var(--blush-l);color:#6B3545;}
+</style>
+</head>
+<body>
+
+<div class="page-title">Sunday Reset</div>
+<div class="page-sub">Clickable prototype · 11 screens · tap to navigate</div>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="sbar"><span id="st">9:00</span><span>●●●</span></div>
+
+  <!-- ═══ S1: WELCOME ═══ -->
+  <div class="screen active" id="s1">
+    <div class="inner">
+      <div class="ws bg-terra">
+        <div style="text-align:center;padding:18px 0 12px;">
+          <div style="width:52px;height:52px;border-radius:50%;background:var(--sage-l);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:24px;">🌿</div>
+          <div class="sh1" style="text-align:center;font-size:22px;">Sunday<br><em>Reset</em></div>
+          <div class="sbody" style="text-align:center;margin-top:8px;">A weekly ritual for nourishing yourself — without the stress, the tracking, or the rules.</div>
+        </div>
+        <div class="scard">
+          <div style="font-size:10px;color:var(--mid);line-height:1.6;">Pick 5–7 ingredients on Sunday. We build your week of simple, nourishing meals. You just show up and cook.</div>
+        </div>
+        <button class="sbtn" onclick="go(2)">Get started</button>
+        <div class="shint">No account needed to start</div>
+        <div class="npill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S2: PREFERENCES ═══ -->
+  <div class="screen" id="s2">
+    <div class="inner">
+      <div class="ws bg-cream">
+        <div class="pbar"><div class="pfill" style="width:33%;"></div></div>
+        <div style="font-size:9px;color:var(--hint);margin-bottom:8px;">Step 1 of 3 — three quick questions</div>
+        <div class="sh1" style="font-size:15px;margin-bottom:4px;">A few things to<br>personalise your week</div>
+        <div class="sbody">No forms. No sign-up. We'll ask the rest over time.</div>
+        <div class="scard">
+          <div class="sct">How many people cooking for?</div>
+          <div class="crow" id="p-crowd">
+            <div class="chip cx" onclick="solo(this,'p-crowd')">Just me</div>
+            <div class="chip cx on" onclick="solo(this,'p-crowd')">2 people</div>
+            <div class="chip cx" onclick="solo(this,'p-crowd')">3–4</div>
+            <div class="chip cx" onclick="solo(this,'p-crowd')">Family</div>
+          </div>
+        </div>
+        <div class="scard">
+          <div class="sct">Ingredients to always avoid?</div>
+          <div class="crow" id="p-avoid">
+            <div class="chip cx" onclick="toggle(this)">Meat</div>
+            <div class="chip cx" onclick="toggle(this)">Dairy</div>
+            <div class="chip cx on" onclick="toggle(this)">Gluten</div>
+            <div class="chip cx" onclick="toggle(this)">Shellfish</div>
+          </div>
+          <div style="font-size:9px;color:var(--hint);">We'll never suggest these. Add more anytime.</div>
+        </div>
+        <div class="scard">
+          <div class="sct">Cooking comfort?</div>
+          <div class="crow" id="p-skill">
+            <div class="chip cx" onclick="solo(this,'p-skill')">Keep it simple</div>
+            <div class="chip cx on" onclick="solo(this,'p-skill')">Some experience</div>
+            <div class="chip cx" onclick="solo(this,'p-skill')">Confident cook</div>
+          </div>
+        </div>
+        <button class="sbtn" onclick="go(3)" style="margin-top:4px;">Continue →</button>
+        <div class="npill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S2b: NOTIFICATIONS ═══ -->
+  <div class="screen" id="s2b">
+    <div class="inner">
+      <div class="ws bg-cream">
+        <div style="text-align:center;padding:18px 0 12px;">
+          <div style="font-size:32px;margin-bottom:10px;">🔔</div>
+          <div class="sh1" style="text-align:center;font-size:16px;margin-bottom:5px;">Never miss your<br><em>Sunday ritual</em></div>
+          <div class="sbody" style="text-align:center;">A gentle nudge on Sunday mornings — your week's meals are one pick away.</div>
+        </div>
+        <div class="scard" style="margin-bottom:8px;">
+          <div class="sct">Remind me on Sunday at</div>
+          <div style="display:flex;gap:5px;">
+            <div class="chip cx nchip" onclick="solo(this,'notif-time')">8:00 am</div>
+            <div class="chip cx on nchip" onclick="solo(this,'notif-time')">9:00 am</div>
+            <div class="chip cx nchip" onclick="solo(this,'notif-time')">10:00 am</div>
+          </div>
+        </div>
+        <div class="scard">
+          <div class="sct">Also remind me before dinner?</div>
+          <div style="display:flex;gap:5px;">
+            <div class="chip cx on nchip" onclick="solo(this,'notif-din')">Yes, 5:30 pm</div>
+            <div class="chip cx nchip" onclick="solo(this,'notif-din')">No thanks</div>
+          </div>
+        </div>
+        <button class="sbtn" style="margin-top:10px;" onclick="go(3)">Allow notifications</button>
+        <button class="sbtn-o" onclick="go(3)">Skip for now</button>
+        <div class="npill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S3: SUNDAY WELCOME ═══ -->
+  <div class="screen" id="s3">
+    <div class="inner">
+      <div class="ws bg-terra">
+        <div class="sbadge"><span class="sdot"></span> Sunday Reset</div>
+        <div class="sh1" style="font-size:20px;margin-bottom:6px;">Good morning,<br><em>it's your week</em><br>to nourish.</div>
+        <div class="sbody">No pressure. Just a few ingredients you feel drawn to — and we'll handle the rest.</div>
+        <div class="scard">
+          <div class="sct">How's your energy today?</div>
+          <div class="erow" id="e-row">
+            <div class="ec" onclick="solo(this,'e-row')"><span class="eico">🌿</span>Flowing</div>
+            <div class="ec a" onclick="solo(this,'e-row')"><span class="eico">☁️</span>Gentle</div>
+            <div class="ec" onclick="solo(this,'e-row')"><span class="eico">✨</span>Ready</div>
+          </div>
+          <div style="font-size:9px;color:var(--hint);margin-top:5px;">Shapes how complex your meals will be.</div>
+        </div>
+        <div class="scard">
+          <div class="sct">Budget this week?</div>
+          <div class="crow" id="budget-row">
+            <div class="chip cx" onclick="solo(this,'budget-row')">Tight</div>
+            <div class="chip cx on" onclick="solo(this,'budget-row')">Normal</div>
+            <div class="chip cx" onclick="solo(this,'budget-row')">Flexible</div>
+          </div>
+        </div>
+        <div class="scard" style="margin-bottom:10px;">
+          <div class="sct">Your week</div>
+          <div class="wrow">
+            <div class="wdy"><div class="wdt today">Su</div>Today</div>
+            <div class="wdy"><div class="wdt"></div>Mo</div>
+            <div class="wdy"><div class="wdt"></div>Tu</div>
+            <div class="wdy"><div class="wdt"></div>We</div>
+            <div class="wdy"><div class="wdt"></div>Th</div>
+            <div class="wdy"><div class="wdt"></div>Fr</div>
+            <div class="wdy"><div class="wdt"></div>Sa</div>
+          </div>
+        </div>
+        <button class="sbtn" onclick="go(4)">Choose this week's ingredients →</button>
+        <div class="shint">Takes about 2 minutes</div>
+        <div class="npill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S4: INGREDIENT PICKER ═══ -->
+  <div class="screen" id="s4">
+    <div class="inner">
+      <div class="ws bg-cream">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;">
+          <div class="back" onclick="go(3)">←</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:14px;color:var(--ink);">Pick what calls to you</div>
+        </div>
+        <div style="background:var(--gold-l);border-radius:9px;padding:7px 10px;margin-bottom:10px;border-left:3px solid var(--gold);font-size:9px;color:#5A4510;line-height:1.4;">Early spring — root veg still hearty, bright greens just arriving.</div>
+        <div class="crow" id="filt-row">
+          <div class="chip ct on" onclick="solo(this,'filt-row')">🌱 Spring</div>
+          <div class="chip cx" onclick="solo(this,'filt-row')">By colour</div>
+          <div class="chip cx" onclick="solo(this,'filt-row')">Comfort</div>
+          <div class="chip cx" onclick="solo(this,'filt-row')">What's cheap</div>
+        </div>
+        <div class="igrid" id="ing-grid">
+          <div class="ic sel" onclick="togIng(this)"><span class="iico">🥕</span><span class="inm">Carrots</span><span class="int">sweet, earthy</span></div>
+          <div class="ic sel" onclick="togIng(this)"><span class="iico">🌿</span><span class="inm">Spinach</span><span class="int">tender, bright</span></div>
+          <div class="ic" onclick="togIng(this)"><span class="iico">🧅</span><span class="inm">Leeks</span><span class="int">mild, silky</span></div>
+          <div class="ic sel" onclick="togIng(this)"><span class="iico">🍋</span><span class="inm">Lemon</span><span class="int">zingy, fresh</span></div>
+          <div class="ic sel" onclick="togIng(this)"><span class="iico">🫘</span><span class="inm">White beans</span><span class="int">creamy</span></div>
+          <div class="ic" onclick="togIng(this)"><span class="iico">🥔</span><span class="inm">Potatoes</span><span class="int">grounding</span></div>
+          <div class="ic sel" onclick="togIng(this)"><span class="iico">🫚</span><span class="inm">Olive oil</span><span class="int">golden, rich</span></div>
+          <div class="ic" onclick="togIng(this)"><span class="iico">🌶</span><span class="inm">Chilli</span><span class="int">warming</span></div>
+          <div class="ic" onclick="togIng(this)"><span class="iico">🧄</span><span class="inm">Garlic</span><span class="int">fragrant</span></div>
+        </div>
+        <div style="text-align:center;font-size:9px;color:var(--mid);margin-bottom:4px;" id="ing-count">5 of 7 chosen</div>
+        <div class="cdots" id="ing-dots">
+          <div class="cd f"></div><div class="cd f"></div><div class="cd f"></div><div class="cd f"></div><div class="cd f"></div><div class="cd"></div><div class="cd"></div>
+        </div>
+        <button class="sbtn" style="margin-top:10px;" onclick="go(5)">Build my week's meals →</button>
+        <div class="npill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S5: BUILDING PLAN ═══ -->
+  <div class="screen" id="s5">
+    <div class="inner">
+      <div class="ws bg-sage">
+        <div style="text-align:center;padding:20px 0 12px;">
+          <div style="font-size:28px;margin-bottom:10px;">🌿</div>
+          <div class="sh1" style="text-align:center;font-size:17px;margin-bottom:6px;">Putting your week<br>together…</div>
+          <div class="sbody" style="text-align:center;">Matching your ingredients to 5 nourishing one-pot meals.</div>
+        </div>
+        <div class="scard">
+          <div class="sct" style="margin-bottom:7px;">Your basket</div>
+          <div class="crow"><div class="chip cs">Carrots</div><div class="chip cs">Spinach</div><div class="chip cs">Lemon</div><div class="chip cs">Beans</div><div class="chip cs">Olive oil</div></div>
+        </div>
+        <div class="scard">
+          <div class="sct" style="margin-bottom:7px;">Building meals</div>
+          <div class="bitem"><div class="bdot done"></div><div class="btxt done">White bean &amp; carrot soup</div></div>
+          <div class="bitem"><div class="bdot done"></div><div class="btxt done">Lemony spinach on toast</div></div>
+          <div class="bitem"><div class="bdot prog"></div><div class="btxt prog">Carrot &amp; bean stew…</div></div>
+          <div class="bitem"><div class="bdot wait"></div><div class="btxt wait">Finding meal 4…</div></div>
+          <div class="bitem"><div class="bdot wait"></div><div class="btxt wait">Finding meal 5…</div></div>
+        </div>
+        <div style="background:var(--terra-p);border:1px solid var(--terra-l);border-radius:9px;padding:8px 10px;font-size:9px;color:#7A3A1E;line-height:1.45;"><strong>Swap available anytime —</strong> don't love a meal? Tap "swap" on any card. We'll use the same basket.</div>
+        <div class="npill"></div>
+        <button class="sbtn" style="margin-top:14px;" onclick="go(6)">See your meal plan →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S6: MEAL CARDS ═══ -->
+  <div class="screen" id="s6">
+    <div class="inner">
+      <div class="ws bg-cream">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;">
+          <div style="font-family:'DM Serif Display',serif;font-size:14px;color:var(--ink);flex:1;">Your week's meals</div>
+          <div class="chip cg" style="font-size:8px;">5 ready</div>
+        </div>
+        <div style="font-size:9px;color:var(--mid);margin-bottom:10px;line-height:1.4;">Scroll to see all five. Swap anything, anytime.</div>
+
+        <div class="mc">
+          <div class="mbar" style="background:var(--sage);"></div>
+          <div class="mbody">
+            <div class="mmeta"><span class="mtag mt-t">⏱ 25 min</span><span class="mtag mt-m">☁️ Gentle</span></div>
+            <div class="mnm">White bean &amp; carrot soup</div>
+            <div class="msen">Silky and warming — the kind of bowl that makes the house smell like something good is happening.</div>
+            <div class="bnote"><span class="leaf">✦</span><span>Steady energy, keeps you full. Carrots support your skin.</span></div>
+          </div>
+          <div class="mfoot"><button class="swp">Swap ingredient</button><button class="ckbtn" onclick="go(9)">See recipe</button></div>
+        </div>
+
+        <div class="mc">
+          <div class="mbar" style="background:var(--gold);"></div>
+          <div class="mbody">
+            <div class="mmeta"><span class="mtag mt-t">⏱ 15 min</span><span class="mtag mt-m">✨ Any day</span></div>
+            <div class="mnm">Lemony spinach on toast</div>
+            <div class="msen">Bright and fresh — greens wilted in olive oil with lemon. A reward, not a chore.</div>
+            <div class="bnote"><span class="leaf">✦</span><span>Iron-rich spinach + lemon's vitamin C — a gentle energy lift.</span></div>
+          </div>
+          <div class="mfoot"><button class="swp">Swap ingredient</button><button class="ckbtn" onclick="go(9)">See recipe</button></div>
+        </div>
+
+        <div class="mc">
+          <div class="mbar" style="background:var(--terra);"></div>
+          <div class="mbody">
+            <div class="mmeta"><span class="mtag mt-t">⏱ 30 min</span><span class="mtag mt-m">🌿 Flowing</span></div>
+            <div class="mnm">Carrot &amp; bean stew</div>
+            <div class="msen">Hearty and grounding — a one-pot that practically makes itself while you unwind.</div>
+            <div class="bnote"><span class="leaf">✦</span><span>Plant protein from beans keeps energy steady through the evening.</span></div>
+          </div>
+          <div class="mfoot"><button class="swp">Swap ingredient</button><button class="ckbtn" onclick="go(9)">See recipe</button></div>
+        </div>
+
+        <div style="text-align:center;font-size:9px;color:var(--hint);padding:4px 0 6px;">+ 2 more meals · scroll to see</div>
+        <button class="sbtn-o" onclick="go(7)">See shopping list →</button>
+        <div class="npill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S7: SHOPPING LIST ═══ -->
+  <div class="screen" id="s7">
+    <div class="inner">
+      <div class="ws bg-cream">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;">
+          <div class="back" onclick="go(6)">←</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:14px;color:var(--ink);flex:1;">Shopping list</div>
+          <div class="chip cs" style="font-size:8px;">8 items</div>
+        </div>
+        <div style="font-size:9px;color:var(--mid);margin-bottom:7px;">Check off as you go. Tap any item to remove it.</div>
+        <div class="pbar"><div class="pfill" id="shop-bar" style="width:37%;"></div></div>
+        <div style="font-size:9px;color:var(--hint);margin-bottom:8px;" id="shop-count">3 of 8 ticked</div>
+
+        <div class="slcat">Fresh</div>
+        <div class="sli" onclick="tickItem(this)"><div class="slck"></div><div class="slnm">Carrots</div><div class="slqt">6 medium</div></div>
+        <div class="sli" onclick="tickItem(this)"><div class="slck done"></div><div class="slnm done">Spinach</div><div class="slqt">2 bags</div></div>
+        <div class="sli" onclick="tickItem(this)"><div class="slck"></div><div class="slnm">Lemons</div><div class="slqt">3</div></div>
+
+        <div class="slcat">Pantry</div>
+        <div class="sli" onclick="tickItem(this)"><div class="slck done"></div><div class="slnm done">White beans</div><div class="slqt">2 cans</div></div>
+        <div class="sli" onclick="tickItem(this)"><div class="slck"></div><div class="slnm">Olive oil</div><div class="slqt">1 bottle</div></div>
+        <div class="sli" onclick="tickItem(this)"><div class="slck done"></div><div class="slnm done">Veg stock</div><div class="slqt">1L</div></div>
+
+        <div class="slcat">Bread &amp; grains</div>
+        <div class="sli" onclick="tickItem(this)"><div class="slck"></div><div class="slnm">Sourdough loaf</div><div class="slqt">1</div></div>
+        <div class="sli" onclick="tickItem(this)"><div class="slck"></div><div class="slnm">Brown rice</div><div class="slqt">400g</div></div>
+
+        <div style="background:var(--sage-p);border-radius:9px;padding:8px 10px;margin-top:10px;font-size:9px;color:#2A5A29;line-height:1.4;"><strong>Already have something?</strong> Tap to remove — quantities adjust automatically.</div>
+        <div class="npill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S8: MOOD CHECK-IN ═══ -->
+  <div class="screen" id="s8">
+    <div class="inner">
+      <div class="ws bg-blush">
+        <div style="font-size:9px;color:var(--hint);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:7px;">Tuesday dinner</div>
+        <div class="sh1" style="font-size:18px;margin-bottom:5px;">How are you<br>feeling <em>right now?</em></div>
+        <div class="sbody" style="margin-bottom:12px;">No right answer — just what's true. We'll match you to your best meal from this week's basket.</div>
+        <div class="mopt" id="mood-opts">
+          <div class="mbtn" onclick="pickMood(this)">
+            <div class="mico" style="background:var(--gold-l);">😌</div>
+            <div><div class="mlbl">Calm and settled</div><div class="mdsc">I have time, I'd like something cosy</div></div>
+          </div>
+          <div class="mbtn on" onclick="pickMood(this)">
+            <div class="mico" style="background:var(--sage-l);">😮‍💨</div>
+            <div><div class="mlbl">Tired, low fuel</div><div class="mdsc">Quick, not too much thinking</div></div>
+          </div>
+          <div class="mbtn" onclick="pickMood(this)">
+            <div class="mico" style="background:var(--blush-l);">⚡</div>
+            <div><div class="mlbl">Energised, feeling good</div><div class="mdsc">I could try something more involved</div></div>
+          </div>
+        </div>
+        <div class="rcard">
+          <div class="rclbl">✦ Tonight's suggestion</div>
+          <div class="rcnm">Lemony spinach on toast</div>
+          <div class="rcwhy">15 minutes, barely any chopping. The lemon will wake you up gently.</div>
+          <button class="sbtn" style="margin-top:9px;font-size:10px;padding:9px;" onclick="go(9)">Start cooking →</button>
+        </div>
+        <div style="text-align:center;font-size:9px;color:var(--hint);margin-top:7px;cursor:pointer;">or browse all 5 meals</div>
+        <div class="npill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S9: RECIPE DETAIL ═══ -->
+  <div class="screen" id="s9">
+    <div class="inner">
+      <div class="ws bg-cream">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:9px;">
+          <div class="back" onclick="go(8)">←</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:13px;color:var(--ink);">Lemony spinach on toast</div>
+        </div>
+        <div class="crow" style="margin-bottom:9px;">
+          <div class="chip cg">15 min</div>
+          <div class="chip cs">2 servings</div>
+          <div class="chip cx">1 pan</div>
+        </div>
+        <div class="scard" style="margin-bottom:8px;">
+          <div class="sct">You'll need</div>
+          <div style="font-size:10px;color:var(--ink);line-height:1.7;">
+            2 handfuls spinach<br>
+            2 slices sourdough<br>
+            1 lemon, juice + zest<br>
+            2 tbsp olive oil<br>
+            Salt, black pepper<br>
+            <span style="color:var(--hint);">Optional: chilli, fried egg</span>
+          </div>
+        </div>
+        <div class="scard" style="margin-bottom:9px;">
+          <div class="sct">Body notes</div>
+          <div class="bnote"><span class="leaf">✦</span><span style="font-size:9px;">Iron-rich spinach + lemon's vitamin C — your body absorbs iron much better this way. A calm, sustaining meal.</span></div>
+        </div>
+        <button class="sbtn" onclick="go(10)">Begin step-by-step →</button>
+        <div class="shint">Screen stays on while you cook</div>
+        <div class="npill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S10: COOK STEP ═══ -->
+  <div class="screen" id="s10">
+    <div class="inner">
+      <div class="ws bg-sage">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:10px;color:var(--mid);">Lemony spinach on toast</div>
+          <div style="font-size:9px;color:var(--hint);">Step 2 of 4</div>
+        </div>
+        <div class="pbar"><div class="pfill" style="width:50%;"></div></div>
+        <div class="tbar">
+          <div class="tlbl">Pan heating</div>
+          <div class="tval" id="cook-timer" onclick="startCookTimer()">1:45</div>
+        </div>
+        <div class="scard" style="margin-bottom:9px;">
+          <div style="font-size:9px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px;">Now doing</div>
+          <div style="font-family:'DM Serif Display',serif;font-size:14px;color:var(--ink);margin-bottom:4px;">Heat oil and wilt the spinach</div>
+          <div style="font-size:10px;color:var(--mid);line-height:1.5;">Warm olive oil in a pan over medium heat. Add spinach and let it wilt — about 2 minutes. Don't rush it; it'll collapse into something beautiful.</div>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:10px;">
+          <div style="flex:1;background:var(--white);border-radius:10px;padding:8px;border:1px solid rgba(0,0,0,.07);">
+            <div style="font-size:8px;color:var(--hint);margin-bottom:3px;">Just done</div>
+            <div style="font-size:9px;color:var(--mid);line-height:1.3;">Toast bread until golden</div>
+          </div>
+          <div style="flex:1;background:var(--white);border-radius:10px;padding:8px;border:1px solid rgba(0,0,0,.07);">
+            <div style="font-size:8px;color:var(--hint);margin-bottom:3px;">Coming up</div>
+            <div style="font-size:9px;color:var(--mid);line-height:1.3;">Add lemon juice, season</div>
+          </div>
+        </div>
+        <div style="background:var(--gold-l);border-radius:9px;padding:8px 10px;margin-bottom:10px;font-size:9px;color:#5A4510;line-height:1.4;"><strong>Need to swap?</strong> No spinach? Use frozen peas or any soft green.</div>
+        <button class="sbtn" onclick="go(11)">Mark done — next step →</button>
+        <div class="npill"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ S11: MEAL COMPLETE ═══ -->
+  <div class="screen" id="s11">
+    <div class="inner">
+      <div class="ws bg-terra">
+        <div style="text-align:center;padding:18px 0 12px;">
+          <div style="font-size:32px;margin-bottom:10px;">🌿</div>
+          <div class="sh1" style="text-align:center;font-size:20px;margin-bottom:5px;">You made that.<br><em>Well done.</em></div>
+          <div class="sbody" style="text-align:center;">Lemony spinach on toast — ready in 14 minutes. A real meal, made by you, on a tired Tuesday.</div>
+        </div>
+        <div class="scard" style="margin-bottom:8px;">
+          <div class="sct" style="text-align:center;margin-bottom:10px;">How was it?</div>
+          <div class="rate-row" id="rate-row">
+            <div class="rate-item" onclick="pickRate(this)"><span class="rate-ico">😮‍💨</span><span class="rate-lbl">Not quite</span></div>
+            <div class="rate-item" onclick="pickRate(this)"><span class="rate-ico">😊</span><span class="rate-lbl">Pretty good</span></div>
+            <div class="rate-item on" onclick="pickRate(this)"><span class="rate-ico">🤩</span><span class="rate-lbl">Loved it</span></div>
+          </div>
+        </div>
+        <div class="scard" style="margin-bottom:9px;">
+          <div class="sct">This week's progress</div>
+          <div class="wrow">
+            <div class="wdy"><div class="wdt done">✓</div>Mo</div>
+            <div class="wdy"><div class="wdt today">Tu</div>Now</div>
+            <div class="wdy"><div class="wdt"></div>We</div>
+            <div class="wdy"><div class="wdt"></div>Th</div>
+            <div class="wdy"><div class="wdt"></div>Fr</div>
+          </div>
+        </div>
+        <button class="sbtn-o" style="margin-bottom:6px;" onclick="go(8)">See tomorrow's meals →</button>
+        <div style="text-align:center;font-size:9px;color:var(--hint);">Sunday reminder set · 9:00 am</div>
+        <div class="npill"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end phone -->
+
+<div class="ann">
+  <div class="ann-name" id="aname">1. Welcome splash</div>
+  <div class="ann-note" id="anote">Warm, non-prescriptive first impression. Value prop in 10 seconds.</div>
+  <div id="abadge"><span class="badge bt">Non-judgmental tone from first contact</span></div>
+</div>
+
+<script>
+var cur = 1;
+var hist = [];
+var shopTicked = 3;
+var shopTotal = 8;
+var cookTimerSec = 105;
+var cookTimerInt = null;
+
+var screens = {
+  1:  {id:'s1',  time:'9:00',  name:'1. Welcome splash',      note:'Warm, non-prescriptive first impression. Value prop in 10 seconds.',                      bc:'bt',  bl:'Non-judgmental tone from first contact'},
+  2:  {id:'s2',  time:'9:01',  name:'2. Quick preferences',   note:'3 questions max. No forms, no sign-up. Chips toggle individually.',                        bc:'bt',  bl:'No diet or calorie language'},
+  '2b':{id:'s2b',time:'9:02', name:'2b. Notifications',      note:'"Gentle nudge" framing. Skip is prominent. User sets their own time.',                     bc:'bg',  bl:'Agency: user sets own schedule'},
+  3:  {id:'s3',  time:'9:14',  name:'3. Sunday welcome',      note:'Ritual entry. Energy + budget inputs feel natural. Week view creates gentle accountability.',bc:'bgold',bl:'Same entry point every Sunday'},
+  4:  {id:'s4',  time:'9:16',  name:'4. Ingredient picker',   note:'Sensory descriptors, not nutrition labels. Seasonal cuing. Tap to toggle.',                bc:'bg',  bl:'Real whole food — no processed options'},
+  5:  {id:'s5',  time:'9:17',  name:'5. Building plan',       note:'Visible "building" feels like magic. Swap reassurance before it\'s needed.',               bc:'bg',  bl:'Transparency builds trust'},
+  6:  {id:'s6',  time:'9:19',  name:'6. Meal cards',          note:'Body notes feel nourishing, not preachy. Swap always discoverable.',                       bc:'bg',  bl:'No calorie counts, no macros'},
+  7:  {id:'s7',  time:'10:30', name:'7. Shopping list',       note:'Tap to tick. Aisle grouping cuts cognitive load. Works under in-store pressure.',          bc:'bg',  bl:'Fast, usable in-store under distraction'},
+  8:  {id:'s8',  time:'6:48',  name:'8. Mood check-in',       note:'3 options feel like relief, not a decision. Instant suggestion. "Tired" is respected.',    bc:'bblush',bl:'Decision relief: 3 taps max to a meal'},
+  9:  {id:'s9',  time:'6:50',  name:'9. Recipe detail',       note:'Full scan before committing. Optional ingredients give flex without confusion.',            bc:'bg',  bl:'Review before committing to cook mode'},
+  10: {id:'s10', time:'6:52',  name:'10. Step-by-step',       note:'One action per screen. Timer reduces guesswork. Just done / coming up aid orientation.',   bc:'bg',  bl:'One action per screen — minimal mid-cook decisions'},
+  11: {id:'s11', time:'7:06',  name:'11. Meal complete',      note:'Specific praise ("tired Tuesday") feels earned. Low-stakes feedback. Progress momentum.',  bc:'bgold',bl:'Celebrates the act, not a score'}
+};
+
+// Map screen numbers to IDs for navigation
+var sMap = {1:'s1',2:'s2','2b':'s2b',3:'s3',4:'s4',5:'s5',6:'s6',7:'s7',8:'s8',9:'s9',10:'s10',11:'s11'};
+var sKeys = [1,2,'2b',3,4,5,6,7,8,9,10,11];
+
+function getEl(k){ return document.getElementById(sMap[k]||('s'+k)); }
+
+function go(n) {
+  if (n == cur) return;
+  hist.push(cur);
+  var from = getEl(cur);
+  var to = getEl(n);
+  // slide out current
+  from.style.transition = 'transform .32s cubic-bezier(.4,0,.2,1)';
+  from.style.transform = 'translateX(-100%)';
+  from.classList.remove('active');
+  from.style.pointerEvents = 'none';
+  // prepare incoming
+  to.style.transition = 'none';
+  to.style.transform = 'translateX(100%)';
+  to.style.pointerEvents = 'none';
+  requestAnimationFrame(function(){requestAnimationFrame(function(){
+    to.style.transition = 'transform .32s cubic-bezier(.4,0,.2,1)';
+    to.style.transform = 'translateX(0)';
+    to.classList.add('active');
+    to.style.pointerEvents = 'auto';
+    setTimeout(function(){
+      from.style.transform = '';
+      from.style.transition = '';
+    },340);
+  });});
+  cur = n;
+  updateAnn(n);
+  onEnter(n);
+}
+
+function goBack() {
+  if (!hist.length) return;
+  var prev = hist.pop();
+  var from = getEl(cur);
+  var to = getEl(prev);
+  from.style.transition = 'transform .32s cubic-bezier(.4,0,.2,1)';
+  from.style.transform = 'translateX(100%)';
+  from.classList.remove('active');
+  from.style.pointerEvents = 'none';
+  to.style.transition = 'none';
+  to.style.transform = 'translateX(-100%)';
+  to.style.pointerEvents = 'none';
+  requestAnimationFrame(function(){requestAnimationFrame(function(){
+    to.style.transition = 'transform .32s cubic-bezier(.4,0,.2,1)';
+    to.style.transform = 'translateX(0)';
+    to.classList.add('active');
+    to.style.pointerEvents = 'auto';
+    setTimeout(function(){
+      from.style.transform = '';
+      from.style.transition = '';
+    },340);
+  });});
+  cur = prev;
+  updateAnn(prev);
+}
+
+function updateAnn(n) {
+  var d = screens[n]; if (!d) return;
+  document.getElementById('aname').textContent = d.name;
+  document.getElementById('anote').textContent = d.note;
+  document.getElementById('abadge').innerHTML = '<span class="badge '+d.bc+'">'+d.bl+'</span>';
+  document.getElementById('st').textContent = d.time;
+}
+
+function onEnter(n) {
+  if (n == 2) {
+    // s2 flows to s2b via its own button — we add that route
+    var btn = document.querySelector('#s2 .sbtn');
+    btn.onclick = function(){ go('2b'); };
+  }
+}
+
+// chip interactions
+function solo(el, groupId) {
+  var parent = document.getElementById(groupId) || el.parentElement;
+  parent.querySelectorAll('.chip,.ec').forEach(function(c){ c.classList.remove('on','a'); });
+  el.classList.add('on');
+}
+function toggle(el) { el.classList.toggle('on'); }
+
+// ingredient toggle + counter
+function togIng(el) {
+  el.classList.toggle('sel');
+  var grid = document.getElementById('ing-grid');
+  var sel = grid.querySelectorAll('.ic.sel').length;
+  document.getElementById('ing-count').textContent = sel + ' of 7 chosen';
+  var dots = document.getElementById('ing-dots');
+  dots.querySelectorAll('.cd').forEach(function(d,i){ d.classList.toggle('f', i < sel); });
+}
+
+// shopping list tick
+function tickItem(row) {
+  var ck = row.querySelector('.slck');
+  var nm = row.querySelector('.slnm');
+  var wasDone = ck.classList.contains('done');
+  ck.classList.toggle('done');
+  nm.classList.toggle('done');
+  shopTicked += wasDone ? -1 : 1;
+  document.getElementById('shop-count').textContent = shopTicked + ' of ' + shopTotal + ' ticked';
+  document.getElementById('shop-bar').style.width = Math.round((shopTicked/shopTotal)*100) + '%';
+}
+
+// mood selection
+function pickMood(el) {
+  document.querySelectorAll('#mood-opts .mbtn').forEach(function(b){ b.classList.remove('on'); });
+  el.classList.add('on');
+}
+
+// rating
+function pickRate(el) {
+  document.querySelectorAll('#rate-row .rate-item').forEach(function(r){ r.classList.remove('on'); });
+  el.classList.add('on');
+}
+
+// cook timer
+function startCookTimer() {
+  if (cookTimerInt) return;
+  cookTimerInt = setInterval(function(){
+    cookTimerSec--;
+    if (cookTimerSec < 0){ clearInterval(cookTimerInt); cookTimerSec=0; }
+    var m = Math.floor(cookTimerSec/60);
+    var s = cookTimerSec%60;
+    document.getElementById('cook-timer').textContent = m+':'+(s<10?'0':'')+s;
+  },1000);
+}
+
+updateAnn(1);
+</script>
+</body>
+</html>
